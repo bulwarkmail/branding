@@ -1,6 +1,6 @@
 # Bulwark Mail Branding
 
-Official branding assets for [Bulwark Mail](hhttps://github.com/bulwarkmail).
+Official branding assets for Bulwark Mail.
 
 ## Structure
 
