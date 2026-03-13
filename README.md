@@ -1,6 +1,6 @@
 # Bulwark Mail Branding
 
-Official branding assets for [Bulwark Mail](https://github.com/bulwarkmail).
+Official branding assets for [Bulwark Mail](https://github.com/nickthecook/bulwark-mail).
 
 ## Structure
 
@@ -16,26 +16,22 @@ logo-with-lettering/  Logo with text in Dark and White variants
 
 ### Logo
 
-| Variant | PNG                           | SVG                           |
-| ------- | ----------------------------- | ----------------------------- |
-| Color   | `logo/Bulwark Logo Color.png` | `logo/Bulwark Logo Color.svg` |
-| Dark    | `logo/Bulwark Logo Dark.png`  | `logo/Bulwark Logo Dark.svg`  |
-| White   | `logo/Bulwark Logo White.png` | `logo/Bulwark Logo White.svg` |
+| Variant | PNG | SVG |
+|---------|-----|-----|
+| Color | `logo/Bulwark Logo Color.png` | `logo/Bulwark Logo Color.svg` |
+| Dark | `logo/Bulwark Logo Dark.png` | `logo/Bulwark Logo Dark.svg` |
+| White | `logo/Bulwark Logo White.png` | `logo/Bulwark Logo White.svg` |
 
 ### Logo with Lettering
 
-| Variant       | PNG                                                                   | SVG                                                                   |
-| ------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Dark + Color  | `logo-with-lettering/Bulwark Logo with Lettering Dark and Color.png`  | `logo-with-lettering/Bulwark Logo with Lettering Dark Color.svg`      |
+| Variant | PNG | SVG |
+|---------|-----|-----|
+| Dark + Color | `logo-with-lettering/Bulwark Logo with Lettering Dark and Color.png` | `logo-with-lettering/Bulwark Logo with Lettering Dark Color.svg` |
 | White + Color | `logo-with-lettering/Bulwark Logo with Lettering White and Color.png` | `logo-with-lettering/Bulwark Logo with Lettering White and Color.svg` |
 
 ### Favicon
 
-| Format | File                          |
-| ------ | ----------------------------- |
-| PNG    | `favicon/Bulwark Favicon.png` |
-| SVG    | `favicon/Bulwark Favicon.svg` |
-
-## Source Files
-
-The `.gvdesign` source files were created with [Gravit Designer](https://gravitdesign.com/) and can be edited there.
+| Format | File |
+|--------|------|
+| PNG | `favicon/Bulwark Favicon.png` |
+| SVG | `favicon/Bulwark Favicon.svg` |
