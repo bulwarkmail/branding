@@ -1,38 +1,41 @@
-# Bulwark Mail – Branding
+# Bulwark Mail Branding
 
-Official branding assets for [Bulwark Mail](https://github.com/bulwarkmail/webmail).
+Official branding assets for [Bulwark Mail](https://github.com/bulwarkmail).
 
 ## Structure
 
 ```
-logos/                  # Logo SVGs
-  source/               # Gravit Designer source files (.gvdesign)
-favicon/                # Favicon
-  source/               # Gravit Designer source file
-screenshots/            # Application screenshots
-backgrounds/            # Background images
+favicon/            Favicon in PNG and SVG
+logo/               Logo (icon only) in Color, Dark, and White variants
+  source/           Gravit Designer source files
+logo-with-lettering/  Logo with text in Dark and White variants
+  source/           Gravit Designer source files
 ```
 
-## Assets
+## Variants
 
-### Logos
+### Logo
 
-- **Bulwark-Icon.svg** – Icon/mark only
-- **Bulwark-Lettering.svg** – Logo with lettering
-- **Bulwark-Lettering-large.svg** – Large version with lettering
+| Variant | PNG                           | SVG                           |
+| ------- | ----------------------------- | ----------------------------- |
+| Color   | `logo/Bulwark Logo Color.png` | `logo/Bulwark Logo Color.svg` |
+| Dark    | `logo/Bulwark Logo Dark.png`  | `logo/Bulwark Logo Dark.svg`  |
+| White   | `logo/Bulwark Logo White.png` | `logo/Bulwark Logo White.svg` |
+
+### Logo with Lettering
+
+| Variant       | PNG                                                                   | SVG                                                                   |
+| ------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Dark + Color  | `logo-with-lettering/Bulwark Logo with Lettering Dark and Color.png`  | `logo-with-lettering/Bulwark Logo with Lettering Dark Color.svg`      |
+| White + Color | `logo-with-lettering/Bulwark Logo with Lettering White and Color.png` | `logo-with-lettering/Bulwark Logo with Lettering White and Color.svg` |
 
 ### Favicon
 
-- **favicon.ico** – Browser favicon
-
-### Screenshots
-
-Numbered application screenshots (login, inbox, email viewer, compose, dark mode, settings).
-
-### Backgrounds
-
-- **hero-background.png** – Hero section background image
+| Format | File                          |
+| ------ | ----------------------------- |
+| PNG    | `favicon/Bulwark Favicon.png` |
+| SVG    | `favicon/Bulwark Favicon.svg` |
 
 ## Source Files
 
-Editable `.gvdesign` source files are located in the `source/` subfolder of each category. These were created with [Gravit Designer](https://gravitdesign.com/) and can be opened and edited there.
+The `.gvdesign` source files were created with [Gravit Designer](https://gravitdesign.com/) and can be edited there.
