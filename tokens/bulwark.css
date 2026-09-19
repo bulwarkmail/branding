@@ -1,0 +1,115 @@
+/* ======================================================================
+   Bulwark design tokens. The rules behind them are in GUIDELINES.md.
+
+   Theme:   .dark on <html>.
+   Edition: data-edition="lite" on <html>. Lite swaps brand, field, link
+            and focus to teal and changes nothing else.
+
+   Components read these tokens, never hex values.
+   ====================================================================== */
+
+:root {
+  /* grounds */
+  --bw-page: #ffffff;
+  --bw-surface: #f4f4f5; /* code blocks, quiet bands, footer, tile hover, notes */
+  --bw-text: #18181b;
+  --bw-text-muted: #56565d;
+  --bw-rule: #dddde1; /* tile edges, table rows, image frames */
+  --bw-control: #7f7f87; /* input, outlined button and edition switch borders */
+
+  /* brand */
+  --bw-brand: #db2d54;
+  --bw-on-brand: #ffffff;
+  --bw-field: #db2d54; /* nav, hero, install */
+  --bw-on-field: #ffffff;
+  --bw-link: #c01f46; /* raspberry itself is too light for small text on grey */
+  --bw-focus: #c01f46;
+
+  /* fixed dark surface used on the field (code block, button hover) */
+  --bw-ink: #18181b;
+  --bw-on-ink: #f2f2f3;
+  --bw-ink-muted: #ababb2;
+
+  /* semantic, never the brand colour */
+  --bw-error: #b42318;
+  --bw-warning: #8a5d00;
+  --bw-success: #17784a;
+
+  /* type: Hanken Grotesk and JetBrains Mono, both open source */
+  --bw-font: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bw-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --bw-h1: clamp(36px, 4.7vw, 60px);
+  --bw-h2: clamp(28px, 3.2vw, 40px);
+  --bw-h3: 21px;
+  --bw-lead: 19px;
+  --bw-body: 17px;
+  --bw-small: 15px;
+  --bw-caption: 13.5px;
+  --bw-code: 13.5px;
+  --bw-heading-weight: 400;
+  --bw-heading-tracking: -0.015em;
+
+  /* space: 8px unit with a 4px half step */
+  --bw-gutter: 80px;
+  --bw-section: 120px;
+  --bw-tile-pad: 28px;
+  --bw-content: 1120px;
+
+  /* shape and motion */
+  --bw-radius-control: 2px;
+  --bw-control-height: 36px;
+  --bw-motion: 120ms ease-out;
+
+  color-scheme: light;
+}
+
+.dark {
+  --bw-page: #131315;
+  --bw-surface: #1f1f22;
+  --bw-text: #f2f2f3;
+  --bw-text-muted: #ababb2;
+  --bw-rule: #36363b;
+  --bw-control: #85858d;
+  --bw-field: #c4264b; /* a step darker so white text reaches 5.6:1 */
+  --bw-link: #ff91a8;
+  --bw-focus: #ff91a8;
+  --bw-error: #ff9b8f;
+  --bw-warning: #e2b341;
+  --bw-success: #4cc38a;
+  color-scheme: dark;
+}
+
+/* Bulwark Lite: white on teal is 4.5:1, links hold 6.4:1 and 10.4:1. */
+:root[data-edition="lite"] {
+  --bw-brand: #0f8578;
+  --bw-field: #0f8578;
+  --bw-link: #0a6b60;
+  --bw-focus: #0a6b60;
+}
+.dark[data-edition="lite"] {
+  --bw-field: #0c7267;
+  --bw-link: #6fd3c5;
+  --bw-focus: #6fd3c5;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --bw-gutter: 40px;
+    --bw-section: 96px;
+  }
+}
+@media (max-width: 640px) {
+  :root {
+    --bw-h3: 19px;
+    --bw-lead: 17px;
+    --bw-body: 16px;
+    --bw-gutter: 20px;
+    --bw-section: 64px;
+    --bw-tile-pad: 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --bw-motion: 0ms;
+  }
+}
