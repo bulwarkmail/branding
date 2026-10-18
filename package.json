@@ -1,0 +1,17 @@
+{
+  "name": "bulwark-branding",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Capture and render the Bulwark product images: screenshots, framed heroes, social cards.",
+  "type": "module",
+  "scripts": {
+    "shoot": "node scripts/shoot.mjs",
+    "frame": "node scripts/frame.mjs",
+    "og": "node scripts/og.mjs",
+    "launch": "node scripts/launch-images.mjs",
+    "header": "node scripts/twitter-header.mjs",
+    "avatar": "node scripts/avatar.mjs",
+    "sync": "node scripts/sync.mjs",
+    "all": "node scripts/shoot.mjs && node scripts/frame.mjs && node scripts/og.mjs && node scripts/twitter-header.mjs && node scripts/sync.mjs"
+  }
+}
