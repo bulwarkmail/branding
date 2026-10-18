@@ -189,6 +189,9 @@ async function desktop(browser, theme) {
     }
   }
   if (want("tag")) {
+    // Back to the own inbox first: after the shared mailbox the list scope differs.
+    await s.tryClick('[data-tour="sidebar"] >> text=/^Inbox$/', 3000);
+    await sleep(1500);
     await s.page.locator('[data-tour="sidebar"]').first().evaluate((el) => { const sc = el.querySelector('[class*="overflow-y"]') || el; sc.scrollTop = sc.scrollHeight; }).catch(() => {});
     await sleep(600);
     if (await s.mustClick('[data-tour="keyword-tags"] >> text=/^Travel$/', "Travel tag")) {
