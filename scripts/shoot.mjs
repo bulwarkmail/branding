@@ -104,7 +104,8 @@ async function desktop(browser, theme) {
   if (want("search")) {
     await s.search("Beacon");
     await s.shoot("search");
-    if (await s.tryClick('button[aria-label*="filter" i], button[title*="filter" i], button[aria-label*="Advanced" i]', 3000)) {
+    // The funnel next to the search field is titled "More".
+    if (await s.mustClick('button[title="More"], button[aria-label*="filter" i], button[title*="filter" i]', "advanced search toggle", 3000)) {
       await sleep(1500);
       await s.shoot("search-filters");
       await s.page.keyboard.press("Escape");
