@@ -1,0 +1,43 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:Jonas Becker
+N:Becker;Jonas;;;
+EMAIL;TYPE=INTERNET,WORK:jonas.becker@example.org
+ORG:Spree Rowing Club
+TITLE:Treasurer
+TEL;TYPE=CELL:+49 30 555 0142
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Mira Okafor
+N:Okafor;Mira;;;
+EMAIL;TYPE=INTERNET,HOME:mira.okafor@example.net
+TEL;TYPE=CELL:+49 30 555 0177
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Henrik Dahl
+N:Dahl;Henrik;;;
+EMAIL;TYPE=INTERNET,WORK:henrik@dahl-architects.example
+ORG:Dahl Architects
+TITLE:Partner
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Leila Haddad
+N:Haddad;Leila;;;
+EMAIL;TYPE=INTERNET,HOME:leila.haddad@example.com
+BDAY:1990-04-12
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Sofia Russo
+N:Russo;Sofia;;;
+EMAIL;TYPE=INTERNET,HOME:sofia.russo@example.com
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Carlos Rivera
+N:Rivera;Carlos;;;
+EMAIL;TYPE=INTERNET,HOME:carlos.rivera@example.com
+END:VCARD

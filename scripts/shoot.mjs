@@ -428,6 +428,96 @@ async function pwa(browser) {
   return sessions;
 }
 
+// ── Home lab: several accounts, push, plugins and themes ──────────────────
+async function homelab(browser, theme) {
+  const ctx = await newContext(browser, { theme });
+  const s = new Session(await ctx.newPage(), theme);
+  console.log(`[${theme}] homelab`);
+  // At home the user is the admin: the relay list comes from the full policy.
+  if (!(await withAdmin(ctx))) s.misses.push("admin session (SHOOT_ADMIN_COOKIE_FILE)");
+  await s.signIn();
+
+  if (want("contacts-import") && await s.rail("contacts")) {
+    // The sidebar's New menu has the import.
+    if (await s.mustClick('button[aria-label="New"]:visible', "contacts New menu") && await s.mustClick('[role="menuitem"]:has-text("Import contacts")', "contacts import")) {
+      await sleep(1500);
+      const input = s.page.locator('[role="dialog"] input[type="file"]').first();
+      if (await input.count()) {
+        await input.setInputFiles(path.join(ASSETS, "contacts-export.vcf"));
+        await sleep(2500);
+        await s.shoot("contacts-import");
+      } else s.misses.push("vCard file input");
+      await s.page.keyboard.press("Escape");
+      await sleep(800);
+    }
+  }
+
+  if (want("settings-notifications", "filters-sieve") && await s.openSettings()) {
+    if (want("settings-notifications") && await s.settingsPage("Notifications")) {
+      await s.showAdvanced();
+      // Pick the relay the admin added: the list offers the public one and theirs.
+      const relay = s.page.locator('main select:has(option:text-is("Home relay"))').first();
+      if (await relay.count()) { await relay.selectOption({ label: "Home relay" }); await sleep(1000); } else s.misses.push("push relay choice");
+      await s.scrollToSection("push", "push notifications");
+      await s.shoot("settings-notifications");
+    }
+    if (want("filters-sieve") && await s.settingsPage("Filters")) {
+      if (await s.mustClick('button:has-text("Open raw Sieve editor"), button:has-text("Raw Sieve editor")', "raw Sieve editor")) {
+        await sleep(1500);
+        const editor = s.page.locator('[role="dialog"] textarea, [role="dialog"] .cm-content').first();
+        if (await editor.count()) {
+          await editor.click();
+          await s.page.keyboard.press("Control+A");
+          await s.page.keyboard.press("Delete");
+          await s.page.keyboard.insertText(fs.readFileSync(path.join(ASSETS, "filters.sieve"), "utf8").replace(/\r\n/g, "\n"));
+          await sleep(600);
+          await s.tryClick('button:visible:text-is("Validate")', 2000);
+          await sleep(2000);
+          await editor.evaluate((el) => { const sc = el.closest(".cm-scroller") || el; sc.scrollTop = 0; el.scrollTop = 0; }).catch(() => {});
+          await sleep(500);
+          await s.shoot("filters-sieve");
+        } else s.misses.push("Sieve editor field");
+        await s.mustClick('button:visible:text-is("Cancel")', "close the Sieve editor", 3000);
+        // It asks before dropping the edit.
+        await s.tryClick('[role="alertdialog"] button:text-is("Discard"), [role="dialog"] button:text-is("Discard")', 2000);
+        await sleep(800);
+        if (await s.page.locator('[role="dialog"]:visible, [role="alertdialog"]:visible').count()) { await s.page.keyboard.press("Escape"); await sleep(800); }
+        await sleep(800);
+      }
+    }
+    await s.backToMail();
+  }
+
+  if (want("account-switcher")) {
+    // A message in the pane, not the demo's welcome panel.
+    await s.mustClick(`text=${F.invoice.row}`, "message behind the switcher");
+    await sleep(2500);
+    await accountSwitcher(s);
+  }
+  await ctx.close();
+
+  // Themes from the directory come with the admin session, like every
+  // admin-installed extension.
+  if (want("themes")) {
+    const actx = await newContext(browser, { theme });
+    const a = new Session(await actx.newPage(), theme);
+    await withAdmin(actx);
+    await a.signIn();
+    if (await a.openSettings() && await a.settingsPage("Appearance")) {
+      await a.scrollToSection("theme", "themes");
+      if (await a.mustClick('button:has-text("Show all")', "show all themes", 4000)) {
+        await sleep(1200);
+        await a.page.locator("text=Bolt").first().evaluate((el) => el.scrollIntoView({ block: "center" })).catch(() => a.misses.push("Bolt theme card"));
+        await sleep(1000);
+        await a.shoot("themes");
+      }
+    }
+    await actx.close();
+    return [s, a];
+  }
+  return s;
+}
+
 // ── Admin console, its own session ────────────────────────────────────
 async function adminConsole(browser, theme, shots) {
   const ctx = await newContext(browser, { theme });
@@ -786,7 +876,25 @@ async function setup(browser, theme) {
   return s;
 }
 
-const FLOWS = { desktop, columns, phone, pwa, admin, org, orgadmin, smallbiz, login, setup };
+// ── Bulwark Lite: the static export in demo mode, under /webmail ──────────
+async function lite(browser, theme) {
+  const base = process.env.SHOOT_LITE_BASE;
+  if (!base) { console.log(`[${theme}] lite skipped (SHOOT_LITE_BASE unset)`); return null; }
+  const ctx = await newContext(browser, { theme });
+  const s = new Session(await ctx.newPage(), theme, { base });
+  console.log(`[${theme}] lite at ${base}`);
+  await s.signIn();
+  if (want("lite-inbox")) {
+    await s.mustClick(`text=${F.invoice.row}`, "message in the Lite inbox");
+    await sleep(3500);
+    await s.scrollListTop();
+    await s.shoot("lite-inbox");
+  }
+  await ctx.close();
+  return s;
+}
+
+const FLOWS = { desktop, columns, phone, pwa, homelab, admin, org, orgadmin, smallbiz, login, setup, lite };
 const PER_RUN = new Set(["pwa"]);
 
 (async () => {
