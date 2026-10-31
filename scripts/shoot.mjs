@@ -463,6 +463,155 @@ async function admin(browser, theme) {
   ]);
 }
 
+// ── Organisation, as the admin set it up ──────────────────────────────
+async function orgadmin(browser, theme) {
+  console.log(`[${theme}] organisation admin`);
+  return adminConsole(browser, theme, [
+    adminShot("admin-policy", "policy", { section: "Locked settings" }),
+    adminShot("admin-domains", "organisation"),
+    ["admin-domains-effective", async (s) => {
+      if (!(await s.adminPage("organisation"))) return;
+      await s.adminSection("Effective policy");
+      // The user's address and their groups; the page answers as you type.
+      const fields = s.page.locator('[data-settings-section="effective"] input');
+      if ((await fields.count()) >= 2) {
+        await fields.nth(0).fill("nora@meridianlabs.example");
+        await fields.nth(1).fill("support@meridianlabs.example");
+        await sleep(2500);
+        await s.scrollToSection("effective");
+        await s.shoot("admin-domains-effective");
+        // Typing made the page dirty: clear both, so leaving it asks nothing.
+        await fields.nth(0).fill("");
+        await fields.nth(1).fill("");
+        await sleep(800);
+      } else s.misses.push("Effective policy address fields");
+    }],
+    adminShot("admin-auth", "auth"),
+    adminShot("admin-signatures", "org-signatures"),
+    adminShot("admin-org-templates", "org-templates"),
+    adminShot("admin-security", "org-security", { section: "Sessions" }),
+    adminShot("admin-third-party", "org-security", { section: "Third-party traffic" }),
+    adminShot("admin-shared-tags", "org-sharing"),
+    ["admin-branding", async (s) => {
+      if (!(await s.adminPage("branding"))) return;
+      await s.mustClick(`main button:has-text("${BRANDED_HOST}")`, "branding host scope", 5000);
+      await sleep(1500);
+      await s.shoot("admin-branding");
+    }],
+    adminShot("admin-audit-log", "logs"),
+  ]);
+}
+
+async function org(browser, theme) {
+  const ctx = await newContext(browser, { theme });
+  const s = new Session(await ctx.newPage(), theme);
+  console.log(`[${theme}] organisation`);
+  if (!(await withAdmin(ctx))) s.misses.push("admin session (SHOOT_ADMIN_COOKIE_FILE)");
+  await s.signIn();
+
+  // The External label on mail from outside, and the question before a reply leaves.
+  if (want("external-mail")) {
+    await s.mustClick(`text=${F.invoice.row}`, "external invoice");
+    await sleep(3000);
+    if (!(await s.page.locator("text=/^External$/").first().isVisible().catch(() => false))) s.misses.push("External label");
+    await s.mustClick('button:has-text("Reply")', "reply to the invoice");
+    await sleep(2500);
+    // Sarah is a contact, and contacts count as known; the accounts address isn't.
+    await s.addCc("accounts@designco.example");
+    await s.typeBody("Hi Sarah,\n\nThanks, approved. It goes out with Friday's payment run.\n\nNora");
+    await s.mustClick('button:visible:text-is("Send")', "send the reply");
+    await sleep(1500);
+    if (await s.page.locator('[role="alertdialog"], [role="dialog"]').filter({ hasText: /outside|external/i }).first().isVisible().catch(() => false)) await s.shoot("external-mail");
+    else s.misses.push("external recipient confirm dialog");
+    await s.closeComposer();
+  }
+
+  // The organisation signature with Nora's details, and the disclaimer below it.
+  if (want("composer-org-signature", "templates-org")) {
+    await s.mustClick('[data-tour="compose-button"]', "compose button");
+    await sleep(3000);
+    await s.fillComposer({ to: "priya.sharma@meridianlabs.example", subject: "Beacon budget: the numbers for Thursday" });
+    await s.typeBody("Hi Priya,\n\nThe soak test numbers are in. I've put them next to the budget so we can go through both on Thursday.");
+    if (want("composer-org-signature")) await s.shoot("composer-org-signature");
+    if (want("templates-org")) {
+      if (await s.mustClick('button[aria-label*="emplate" i], button[title*="emplate" i]', "templates button", 3000)) {
+        await sleep(800);
+        if (await s.mustClick('[role="menu"] :text("Insert template")', "insert template", 3000)) {
+          await sleep(1500);
+          const heading = s.page.locator('[role="dialog"] >> text=/^Organisation$/').first();
+          if (await heading.count()) { await heading.evaluate((el) => el.scrollIntoView({ block: "start" })); await sleep(800); await s.shoot("templates-org"); }
+          else s.misses.push("Organisation section in the template picker");
+          await s.page.keyboard.press("Escape");
+          await sleep(600);
+        }
+      }
+    }
+    await s.closeComposer();
+  }
+
+  // Signed by Alice: the S/MIME plugin's banner.
+  if (want("smime-signed")) {
+    // The plugin's banner shows the stored check result when it mounts, so
+    // the first open says only "Signed message": open another mail and come back.
+    await s.ownInbox();
+    await s.open(F.signed.query, F.signed.row, "signed message");
+    await sleep(3000);
+    await s.open(F.coffee.query, F.coffee.row, "another message");
+    if (await s.open(F.signed.query, F.signed.row, "signed message again")) {
+      await sleep(3000);
+      if (!(await s.page.locator("text=/Valid signature/").first().isVisible().catch(() => false))) s.misses.push("S/MIME valid signature banner");
+      await s.shoot("smime-signed");
+    }
+    await s.clearSearch();
+  }
+
+  if (want("recover-deleted") && await s.openSettings()) {
+    if (await s.settingsPage("Recover deleted items")) {
+      await sleep(2500);
+      // Tick the deleted budget mail, then Restore.
+      // The first box is "Select all"; the second is the first message (the budget mail).
+      await s.page.locator('main input[type="checkbox"]').nth(1).click({ timeout: 5000 }).catch(() => s.misses.push("deleted message checkbox"));
+      await sleep(800);
+      if (await s.mustClick('main button:visible:has-text("Restore")', "restore a deleted message", 5000)) await sleep(2500);
+      await s.shoot("recover-deleted");
+    }
+    await s.backToMail();
+  }
+
+  if (want("settings-locked", "settings-accessibility", "delegates", "shared-tags") && await s.openSettings()) {
+    if (want("settings-locked") && await s.settingsPage("Appearance")) {
+      await s.scrollToSection("text", "text & motion");
+      await s.shoot("settings-locked");
+    }
+    if (want("delegates") && await s.settingsPage("Sharing")) {
+      await sleep(2000);
+      await s.shoot("delegates");
+    }
+    await s.backToMail();
+  }
+
+  if (want("shared-tags") && await s.openSupportInbox()) {
+    await s.page.locator('[data-tour="sidebar"]').first().evaluate((el) => { const sc = el.querySelector('[class*="overflow-y"]') || el; sc.scrollTop = sc.scrollHeight; }).catch(() => {});
+    await sleep(800);
+    await s.mustClick(`text=${F.support}`, "support request");
+    await sleep(2500);
+    await s.shoot("shared-tags");
+  }
+
+  // Last: a preset changes the font and spacing everywhere after it.
+  if (want("settings-accessibility") && await s.openSettings() && await s.settingsPage("Accessibility")) {
+    if (await s.mustClick('main button:has-text("Dyslexia"), main [role="radio"]:has-text("Dyslexia"), main label:has-text("Dyslexia")', "dyslexia preset")) await sleep(2000);
+    await s.scrollToSection("presets", "presets");
+    // Down to the note that says what the preset changed.
+    await s.page.locator("text=/changed \\d+ settings/").first().evaluate((el) => el.scrollIntoView({ block: "center" })).catch(() => s.misses.push("preset summary"));
+    await sleep(800);
+    await s.shoot("settings-accessibility");
+  }
+
+  await ctx.close();
+  return s;
+}
+
 // ── Login pages: a server with demo mode off ─────────────────────────────
 async function login(browser, theme) {
   const api = await adminApi();
@@ -532,7 +681,7 @@ async function setup(browser, theme) {
   return s;
 }
 
-const FLOWS = { desktop, columns, phone, pwa, admin, login, setup };
+const FLOWS = { desktop, columns, phone, pwa, admin, org, orgadmin, login, setup };
 const PER_RUN = new Set(["pwa"]);
 
 (async () => {
