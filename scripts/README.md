@@ -83,7 +83,7 @@ webmail). A fixture change that renames one shows up as a reported miss.
 
 ```sh
 node scripts/frame.mjs          # .staging/framed/: window frames, laptop+phone hero, light/dark split
-node scripts/og.mjs             # .staging/cards/og-full.png
+node scripts/og.mjs             # .staging/cards/og-{full,organisations,small-business,homelab}.png
 node scripts/twitter-header.mjs # X header, with --guides for the safe areas
 node scripts/avatar.mjs         # X and GitHub profile pictures
 node scripts/launch-images.mjs  # the Stalwart 1.0 launch boards (needs Google Fonts)
@@ -117,4 +117,4 @@ leaves its old file behind; check `git status` there.
 | Press kit (`public/press/beauty`) | the framed set |
 | Webmail README | `laptop-phone`, `calendar-week`, `contacts-detail`, `composer`, `split-inbox` (framed) |
 | Web app manifest | the two PWA screenshots |
-| Social | `og-full`, the X header and the avatars |
+| Social | `og-full`, the audience cards (`og-organisations`, `og-small-business`, `og-homelab`), the X header and the avatars |
