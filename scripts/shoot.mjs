@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 /**
- * Capture the product screenshots from a running demo instance.
+ * Capture the product screenshots from a running webmail instance.
  *
- *   node scripts/shoot.mjs                      # every flow, light and dark
- *   node scripts/shoot.mjs --theme dark         # one theme
- *   node scripts/shoot.mjs --flow mail,calendar # some flows (see FLOWS)
- *   node scripts/shoot.mjs --only inbox,viewer  # some shots inside the flows
+ *   node scripts/shoot.mjs --flow desktop          # some flows (see FLOWS)
+ *   node scripts/shoot.mjs --theme dark            # one theme
+ *   node scripts/shoot.mjs --only inbox,viewer     # some shots inside the flows
  *
- * Needs the webmail dev server in demo mode (README.md has the command),
- * reachable at SHOOT_BASE (default http://localhost:3100). Captures land in
- * .staging/screenshots as <theme>-<name>.webp, 5120x2880 (1280x720 at 4x);
- * SHOOT_PNG=1 keeps the PNG too. Review them, then `node scripts/sync.mjs`.
+ * shoot-all.mjs starts the instances (scenarios.mjs) and calls this once per
+ * instance with SHOOT_BASE and the flows that instance serves. Captures land
+ * in .staging/screenshots as <theme>-<name>.webp, 5120x2880 (1280x720 at
+ * 4x); SHOOT_PNG=1 keeps the PNG too. Review them, then `node scripts/sync.mjs`.
  *
  * Every flow signs in once and navigates in-app: a full page load drops the
  * demo session. The clock is pinned (lib/app.mjs pinnedClock) so both themes
@@ -18,14 +17,21 @@
  * from the webmail's lib/demo/fixtures; a miss is reported and the run exits
  * non-zero, because a missed click leaves the previous view in the next shot.
  *
- * Flows that need another server instance read their own base URL and are
- * skipped when it is unset: SHOOT_LOGIN_BASE (credential login page),
- * SHOOT_SETUP_BASE + SHOOT_SETUP_TOKEN (setup wizard), SHOOT_ADMIN_PASSWORD
- * (admin console on the demo instance).
+ * Flows that show what an organisation set up (its policy, signature,
+ * plugins) put the admin session into the browser before "Launch Demo"
+ * (SHOOT_ADMIN_COOKIE_FILE, written by shoot-all.mjs): without it the demo
+ * only gets the public part of the policy. Flows on other instances read
+ * their own base: SHOOT_SETUP_TOKEN (setup wizard), SHOOT_LITE_BASE (Lite).
  */
+import fs from "node:fs";
 import path from "node:path";
-import { BASE, DESKTOP, PHONE, Session, launchBrowser, newContext, sleep } from "./lib/app.mjs";
+import { fileURLToPath } from "node:url";
+import { BASE, DESKTOP, PHONE, Session, launchBrowser, newContext, sleep, withAdmin, adminApi } from "./lib/app.mjs";
 import { SHOTS_DIR, ensureDir } from "./lib/paths.mjs";
+import { BRANDED_HOST, LOGIN_CONFIGS, WORK_HOST } from "./scenarios.mjs";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const ASSETS = path.join(here, "assets");
 
 const args = process.argv.slice(2);
 const arg = (name) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : null; };
@@ -33,7 +39,7 @@ const THEMES = (arg("theme") || "all") === "all" ? ["light", "dark"] : [arg("the
 const ONLY = arg("only") ? new Set(arg("only").split(",")) : null;
 const FLOW_FILTER = arg("flow") ? new Set(arg("flow").split(",")) : null;
 
-const want = (name) => !ONLY || ONLY.has(name);
+const want = (...names) => !ONLY || names.some((n) => ONLY.has(n));
 
 // Fixture anchors (lib/demo/fixtures/emails.ts and friends in the webmail).
 const F = {
@@ -49,6 +55,9 @@ const F = {
   support: "Beacon add-on: can we go to 100",
   contact: "Alice Johnson",
   pdf: "quarterly-report.pdf",
+  signed: { query: "security review", row: "Beacon security review: signed off" },
+  coffee: { query: "Coffee before", row: "Coffee before the go/no-go?" },
+  eInvoice: { query: "SH-2026-10418", row: "Your invoice SH-2026-10418" },
 };
 
 // ── Mail, calendar, contacts, files, settings, Pro: one signed-in session ──
@@ -87,11 +96,11 @@ async function desktop(browser, theme) {
   if (want("read-receipt")) { await s.open(F.launchPlan.query, F.launchPlan.row, "read receipt request"); await s.shoot("read-receipt"); }
   if (want("unsubscribe")) { await s.open(F.newsletter.query, F.newsletter.row, "newsletter with List-Unsubscribe"); await s.shoot("unsubscribe"); }
   if (want("external-content")) { await s.open(F.booking.query, F.booking.row, "mail with remote images"); await s.shoot("external-content"); }
-  if (want("attachments")) {
+  if (want("attachments", "attachment-preview")) {
     await s.open(F.soak.query, F.soak.row, "mail with image and spreadsheet");
-    await s.shoot("attachments");
+    if (want("attachments")) await s.shoot("attachments");
     // The image attachment opens in the preview.
-    if (await s.tryClick('button:has-text("beacon-soak-dashboard.png"), text=beacon-soak-dashboard.png', 4000)) {
+    if (want("attachment-preview") && await s.mustClick("text=beacon-soak-dashboard.png", "image attachment", 4000)) {
       await sleep(3500);
       await s.shoot("attachment-preview");
       await s.page.keyboard.press("Escape");
@@ -101,11 +110,11 @@ async function desktop(browser, theme) {
   await s.clearSearch();
 
   // Search results and the filter chips.
-  if (want("search")) {
+  if (want("search", "search-filters")) {
     await s.search("Beacon");
-    await s.shoot("search");
+    if (want("search")) await s.shoot("search");
     // The funnel next to the search field is titled "More".
-    if (await s.mustClick('button[title="More"], button[aria-label*="filter" i], button[title*="filter" i]', "advanced search toggle", 3000)) {
+    if (want("search-filters") && await s.mustClick('button[title="More"], button[aria-label*="filter" i], button[title*="filter" i]', "advanced search toggle", 3000)) {
       await sleep(1500);
       await s.shoot("search-filters");
       await s.page.keyboard.press("Escape");
@@ -113,23 +122,11 @@ async function desktop(browser, theme) {
     await s.clearSearch();
   }
 
-  // Composer: a reply to Bob with an @mention chip and its card.
-  if (want("composer")) {
+  // Composer: a new message to Bob with an @mention chip and its card.
+  if (want("composer", "composer-mention", "templates")) {
     await s.mustClick('[data-tour="compose-button"]', "compose button");
     await sleep(3000);
-    const to = s.page.locator('input[placeholder*="Recipient" i], input[placeholder*="To" i], input[name="to"]').first();
-    if (await to.count()) {
-      await to.click().catch(() => {});
-      await s.page.keyboard.type("bob.chen@meridianlabs.example", { delay: 15 });
-      await s.page.keyboard.press("Enter");
-      await sleep(500);
-      await s.page.keyboard.press("Tab");
-    }
-    const subject = s.page.locator('input[placeholder*="Subject" i], input[name="subject"]').first();
-    if (await subject.count()) {
-      await subject.click({ force: true }).catch(() => {});
-      await s.page.keyboard.type("Rollback runbook: your two comments", { delay: 15 });
-    }
+    await s.fillComposer({ to: "bob.chen@meridianlabs.example", subject: "Rollback runbook: your two comments" });
     const body = s.page.locator(".ProseMirror").first();
     if (!(await body.count())) s.misses.push("composer editor");
     else {
@@ -143,16 +140,19 @@ async function desktop(browser, theme) {
       await sleep(600);
       await s.page.keyboard.type(" can you sign off before the review so Alice can send it with the agenda?\n\nNora", { delay: 3 });
       await sleep(800);
-      await s.shoot("composer");
-      // Hover the chip for its card.
-      const chip = s.page.locator('.ProseMirror [data-mention], .ProseMirror a[href^="mailto:"]').first();
-      if (await chip.count()) {
-        await chip.hover().catch(() => {});
-        await sleep(1500);
-        await s.shoot("composer-mention", { moveMouse: false });
-      } else s.misses.push("mention chip in composer");
-      // Templates menu.
-      if (await s.tryClick('button:has-text("Templates")', 3000)) {
+      if (want("composer")) await s.shoot("composer");
+      if (want("composer-mention")) {
+        // Hover the chip for its card.
+        const chip = s.page.locator('.ProseMirror [data-mention], .ProseMirror a[href^="mailto:"]').first();
+        if (await chip.count()) {
+          await chip.hover().catch(() => {});
+          await sleep(1500);
+          await s.shoot("composer-mention", { moveMouse: false });
+          await s.page.mouse.move(DESKTOP.width - 6, 6);
+        } else s.misses.push("mention chip in composer");
+      }
+      // The templates menu: an icon button in the composer's bottom bar.
+      if (want("templates") && await s.mustClick('button[aria-label*="emplate" i], button[title*="emplate" i]', "templates button", 3000)) {
         await sleep(1200);
         await s.shoot("templates");
         await s.page.keyboard.press("Escape");
@@ -168,31 +168,21 @@ async function desktop(browser, theme) {
       await sleep(3000);
       await s.mustClick(`text=${F.support}`, "message from the shared mailbox in the merged list");
       await sleep(3000);
+      await s.scrollListTop();
       await s.shoot("unified-inbox");
     }
   }
   if (want("shared-mailbox")) {
-    await s.tryClick('[data-tour="sidebar"] >> text=Shared', 3000);
-    await sleep(600);
-    if (await s.mustClick('[data-tour="sidebar"] >> text=Support', "shared Support mailbox")) {
-      await sleep(2500);
+    if (await s.openSupportInbox()) {
       await s.mustClick(`text=${F.support}`, "support request");
       await sleep(2500);
       await s.shoot("shared-mailbox");
     }
   }
-  if (want("account-switcher")) {
-    if (await s.mustClick('button:has-text("Nora Lindqvist")', "account switcher")) {
-      await sleep(1200);
-      await s.shoot("account-switcher");
-      await s.page.keyboard.press("Escape");
-      await sleep(600);
-    }
-  }
+  if (want("account-switcher")) await accountSwitcher(s);
   if (want("tag")) {
     // Back to the own inbox first: after the shared mailbox the list scope differs.
-    await s.tryClick('[data-tour="sidebar"] >> text=/^Inbox$/', 3000);
-    await sleep(1500);
+    await s.ownInbox();
     await s.page.locator('[data-tour="sidebar"]').first().evaluate((el) => { const sc = el.querySelector('[class*="overflow-y"]') || el; sc.scrollTop = sc.scrollHeight; }).catch(() => {});
     await sleep(600);
     if (await s.mustClick('[data-tour="keyword-tags"] >> text=/^Travel$/', "Travel tag")) {
@@ -218,8 +208,7 @@ async function desktop(browser, theme) {
       await s.shoot("scheduled");
     }
   }
-  await s.mustClick('[data-tour="sidebar"] >> text=/^Inbox$/', "back to the inbox");
-  await sleep(2500);
+  await s.ownInbox();
 
   if (want("shortcuts")) {
     await s.page.keyboard.press("Shift+?");
@@ -231,23 +220,17 @@ async function desktop(browser, theme) {
   }
 
   // Calendar
-  if (await s.rail("calendar")) {
+  if (want("calendar", "calendar-week", "calendar-event", "calendar-create", "tasks") && await s.rail("calendar")) {
     if (want("calendar")) await s.shoot("calendar");
-    await s.mustClick('[data-testid="calendar-view-menu"]', "calendar view menu");
-    await s.mustClick('[role="menuitemradio"]:has-text("Week")', "week view");
-    await sleep(2000);
-    await s.tryClick('button:has-text("Today")', 3000);
-    await sleep(1500);
-    await s.page.locator("text=/^07:00$/").first().evaluate((el) => el.scrollIntoView({ block: "start" })).catch(() => {});
-    await sleep(1200);
+    await s.weekView();
     if (want("calendar-week")) await s.shoot("calendar-week");
     if (want("calendar-event")) {
-      if (await s.tryClick('[data-calendar-event]:has-text("go / no-go")', 4000)) {
+      if (await s.mustClick('[data-calendar-event]:has-text("go / no-go")', "go/no-go event in the week view", 4000)) {
         await sleep(1500);
         await s.shoot("calendar-event");
         await s.page.keyboard.press("Escape");
         await sleep(600);
-      } else s.misses.push("go/no-go event in the week view");
+      }
     }
     if (want("calendar-create")) {
       if (await s.mustClick('button[aria-label="Create event"]', "create event button")) {
@@ -255,6 +238,7 @@ async function desktop(browser, theme) {
         await s.shoot("calendar-create");
         await s.page.keyboard.press("Escape");
         await sleep(800);
+        await s.tryClick('button:has-text("Discard")', 1500);
       }
     }
     if (want("tasks")) {
@@ -266,7 +250,7 @@ async function desktop(browser, theme) {
   }
 
   // Contacts
-  if (await s.rail("contacts")) {
+  if (want("contacts-detail", "contact-group") && await s.rail("contacts")) {
     await s.mustClick(`text=${F.contact}`, "contact with activity");
     await sleep(3000);
     if (want("contacts-detail")) await s.shoot("contacts-detail");
@@ -279,13 +263,13 @@ async function desktop(browser, theme) {
   }
 
   // Files
-  if (await s.rail("files")) {
+  if (want("files", "files-documents", "files-grid", "file-preview") && await s.rail("files")) {
     if (want("files")) await s.shoot("files");
     await s.page.locator("text=Documents").first().dblclick({ timeout: 6000 }).catch(() => s.misses.push("Documents folder"));
     await sleep(2500);
     if (want("files-documents")) await s.shoot("files-documents");
     if (want("files-grid")) {
-      if (await s.tryClick('button[aria-label*="grid" i], button[title*="grid" i]', 3000)) {
+      if (await s.mustClick('button[aria-label*="grid" i], button[title*="grid" i]', "grid view", 3000)) {
         await sleep(1500);
         await s.shoot("files-grid");
         await s.tryClick('button[aria-label*="list" i], button[title*="list" i]', 3000);
@@ -301,76 +285,91 @@ async function desktop(browser, theme) {
     }
   }
 
-  // Settings
-  if (await s.rail("settings", 8000)) {
-    await s.page.locator('button:has-text("Appearance"), a:has-text("Appearance")').first().waitFor({ state: "visible", timeout: 15000 }).catch(() => s.misses.push("settings page"));
-    const tab = async (label, name) => {
-      if (!want(name)) return;
-      const re = new RegExp(`^${label}$`);
-      if (await s.mustClick(`button:text-matches("${re.source}"), a:text-matches("${re.source}")`, `${label} settings`)) {
-        await sleep(2500);
-        await s.shoot(name);
-      }
-    };
+  // Settings: since 1.19.0 sixteen pages in three groups; themes, identities
+  // and templates are sections inside them.
+  if (want("settings", "settings-appearance", "identities", "filters", "settings-templates", "pro", "pro-calendar", "pro-composer", "search-palette") && await s.openSettings()) {
     if (want("settings")) await s.shoot("settings");
-    await tab("Appearance", "settings-appearance");
-    await tab("Themes", "themes");
-    await tab("Identities", "identities");
-    await tab("Filters", "filters");
-    await tab("Templates", "settings-templates");
-    await tab("Out of Office|Vacation Responder", "vacation");
+    if (want("settings-appearance") && await s.settingsPage("Appearance")) await s.shoot("settings-appearance");
+    if (want("identities") && await s.settingsPage("Account")) {
+      if (await s.mustClick('main button:has-text("Manage identities")', "manage identities")) {
+        await sleep(2500);
+        await s.scrollToTop();
+        await s.shoot("identities");
+        await s.page.keyboard.press("Escape");
+        await sleep(800);
+      }
+    }
+    if (want("filters") && await s.settingsPage("Filters")) await s.shoot("filters");
+    if (want("settings-templates") && await s.settingsPage("Composing")) {
+      if (await s.mustClick('main button:has-text("Manage templates")', "manage templates")) {
+        await sleep(2500);
+        await s.scrollToTop();
+        await s.shoot("settings-templates");
+        await s.page.keyboard.press("Escape");
+        await sleep(800);
+      }
+    }
 
     // Pro shell: the Layout switch takes the standard routes over.
-    const layout = s.page.getByRole("button", { name: "Layout", exact: true }).or(s.page.getByRole("link", { name: "Layout", exact: true })).first();
-    await layout.click({ timeout: 6000 }).catch(() => s.misses.push("settings Layout tab"));
-    await sleep(2000);
-    const toggle = s.page.locator('[data-testid="setting-pro-interface"]').first();
-    await toggle.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
-    if (await toggle.count()) {
-      await toggle.scrollIntoViewIfNeeded().catch(() => {});
-      await toggle.click({ timeout: 5000 }).catch(() => s.misses.push("pro toggle"));
-      await sleep(9000);
-      await s.tryClick('button:has-text("Got it")', 1500);
-      if ((await s.page.locator('[role="tablist"]').count()) > 0) {
-        for (const label of ["calendar", "contacts", "files"]) { await s.rail(label, 3500); }
-        await s.tryClick('[role="tab"]:has-text("Mail")', 4000);
-        await sleep(2500);
-        await s.page.locator(`text=${F.rollbackThread.row}`).first().click({ timeout: 5000 }).catch(() => {});
-        await sleep(3000);
-        if (want("pro")) await s.shoot("pro");
-        if (want("pro-calendar")) {
-          await s.tryClick('[role="tab"]:has-text("Calendar")', 4000);
-          await sleep(3000);
-          await s.shoot("pro-calendar");
-          await s.tryClick('[role="tab"]:has-text("Mail")', 4000);
-          await sleep(2000);
-        }
-        if (want("pro-composer")) {
-          await s.page.keyboard.press("c");
-          await sleep(3500);
-          await s.shoot("pro-composer");
-          await s.closeComposer();
-        }
-        if (want("search-palette")) {
-          const opened = (await s.tryClick('[data-tour="nav-search"]', 3000)) || (await s.page.keyboard.press("Control+KeyK").then(() => true).catch(() => false));
-          if (opened) {
-            await sleep(1500);
-            await s.page.keyboard.type("Beacon", { delay: 40 });
-            await sleep(4000);
-            await s.shoot("search-palette");
-            await s.page.keyboard.press("Escape");
-          }
-        }
-      } else {
-        s.misses.push("pro shell");
-      }
-    } else {
-      s.misses.push("pro interface setting");
-    }
+    if (want("pro", "pro-calendar", "pro-composer", "search-palette")) await pro(s);
   }
 
   await ctx.close();
   return s;
+}
+
+async function pro(s) {
+  if (!(await s.settingsPage("Appearance"))) return;
+  // The Pro switch is an advanced setting.
+  await s.showAdvanced();
+  await s.scrollToSection("layout", "layout");
+  const toggle = s.page.locator('[data-testid="setting-pro-interface"]').first();
+  await toggle.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+  if (!(await toggle.count())) { s.misses.push("pro interface setting"); return; }
+  await toggle.scrollIntoViewIfNeeded().catch(() => {});
+  await toggle.click({ timeout: 5000 }).catch(() => s.misses.push("pro toggle"));
+  await sleep(9000);
+  await s.tryClick('button:has-text("Got it")', 1500);
+  if (!((await s.page.locator('[role="tablist"]').count()) > 0)) { s.misses.push("pro shell"); return; }
+  for (const label of ["calendar", "contacts", "files"]) { await s.rail(label, 3500); }
+  await s.tryClick('[role="tab"]:has-text("Mail")', 4000);
+  await sleep(2500);
+  await s.page.locator(`text=${F.rollbackThread.row}`).first().click({ timeout: 5000 }).catch(() => {});
+  await sleep(3000);
+  if (want("pro")) await s.shoot("pro");
+  if (want("pro-calendar")) {
+    await s.tryClick('[role="tab"]:has-text("Calendar")', 4000);
+    await sleep(3000);
+    await s.shoot("pro-calendar");
+    await s.tryClick('[role="tab"]:has-text("Mail")', 4000);
+    await sleep(2000);
+  }
+  if (want("pro-composer")) {
+    await s.page.keyboard.press("c");
+    await sleep(3500);
+    await s.shoot("pro-composer");
+    await s.closeComposer();
+  }
+  if (want("search-palette")) {
+    const opened = (await s.tryClick('[data-tour="nav-search"]', 3000)) || (await s.page.keyboard.press("Control+KeyK").then(() => true).catch(() => false));
+    if (opened) {
+      await sleep(1500);
+      await s.page.keyboard.type("Beacon", { delay: 40 });
+      await sleep(4000);
+      await s.shoot("search-palette");
+      await s.page.keyboard.press("Escape");
+    }
+  }
+}
+
+/** The account switcher: the button at the top of the sidebar shows the address. */
+async function accountSwitcher(s, name = "account-switcher") {
+  if (await s.mustClick('[data-tour="sidebar"] button:has-text("nora@meridianla"), button:has-text("nora@meridianla")', "account switcher")) {
+    await sleep(1200);
+    await s.shoot(name);
+    await s.page.keyboard.press("Escape");
+    await sleep(600);
+  }
 }
 
 // ── The column list (#262): one-line rows as a table under a header ─────
@@ -381,7 +380,7 @@ async function columns(browser, theme) {
   await s.signIn();
   await s.mustClick(`text=${F.rollbackThread.row}`, "conversation row");
   await sleep(3000);
-  await s.shoot("inbox-columns");
+  if (want("inbox-columns")) await s.shoot("inbox-columns");
   await ctx.close();
   return s;
 }
@@ -400,7 +399,7 @@ async function phone(browser, theme) {
   await s.page.goBack().catch(() => {});
   await sleep(1500);
   if (want("phone-calendar")) {
-    if (await s.tryClick('[data-tour="nav-calendar"], [aria-label="Calendar"], a[href$="/calendar"]', 4000)) {
+    if (await s.mustClick('[data-tour="nav-calendar"], [aria-label="Calendar"], a[href$="/calendar"]', "phone calendar tab", 4000)) {
       await sleep(5000);
       await s.shoot("phone-calendar");
     }
@@ -411,8 +410,10 @@ async function phone(browser, theme) {
 
 // ── PWA manifest screenshots: exact pixel sizes, light only ──────────────
 async function pwa(browser) {
+  if (!want("pwa")) return null;
   const out = path.join(SHOTS_DIR, "pwa");
   ensureDir(out);
+  const sessions = [];
   for (const [w, h, mobile] of [[1280, 720, false], [540, 720, true]]) {
     const ctx = await newContext(browser, { theme: "light", size: { width: w, height: h, scale: 1, mobile } });
     const s = new Session(await ctx.newPage(), null, { out });
@@ -422,111 +423,129 @@ async function pwa(browser) {
     await sleep(3500);
     await s.shootPng(path.join(out, `screenshot-${w}x${h}.png`));
     await ctx.close();
+    sessions.push(s);
   }
-  return null;
+  return sessions;
 }
 
 // ── Admin console, its own session ────────────────────────────────────
-async function admin(browser, theme) {
-  const password = process.env.SHOOT_ADMIN_PASSWORD;
-  if (!password) { console.log(`[${theme}] admin skipped (SHOOT_ADMIN_PASSWORD unset)`); return null; }
+async function adminConsole(browser, theme, shots) {
   const ctx = await newContext(browser, { theme });
   const s = new Session(await ctx.newPage(), theme);
-  console.log(`[${theme}] admin`);
-  await s.page.goto(`${BASE}/admin/login`, { waitUntil: "domcontentloaded" });
+  if (!(await withAdmin(ctx))) { s.misses.push("admin session (SHOOT_ADMIN_COOKIE_FILE)"); await ctx.close(); return s; }
+  await s.page.clock.setFixedTime(new Date());
+  await s.page.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" });
+  await s.page.locator('[data-testid="admin-page-dashboard"]').first().waitFor({ state: "visible", timeout: 90000 }).catch(() => s.misses.push("admin console"));
   await sleep(3000);
-  await s.page.locator('input[type="password"]').first().fill(password).catch(() => s.misses.push("admin password field"));
-  await s.page.keyboard.press("Enter");
-  await sleep(6000);
-  if (s.page.url().includes("/login")) { s.misses.push("admin login"); await ctx.close(); return s; }
-  await s.shoot("admin-overview");
-  const tab = async (label, name) => {
-    if (await s.tryClick(`[role="tab"]:has-text("${label}"), button:has-text("${label}"), a:has-text("${label}")`, 4000)) {
-      await sleep(3000);
-      await s.shoot(name);
-    }
-  };
-  await tab("Plugins", "admin-plugins");
-  await tab("Marketplace", "admin-marketplace");
-  await tab("Branding", "admin-branding");
-  await tab("Telemetry", "admin-telemetry");
+  for (const [name, fn] of shots) {
+    if (!want(name)) continue;
+    await fn(s);
+  }
   await ctx.close();
   return s;
 }
 
-// ── Credential login page: a server with demo mode off ──────────────────
+const adminShot = (name, page, { section = null, after = null } = {}) => [name, async (s) => {
+  if (!(await s.adminPage(page))) return;
+  if (section) await s.adminSection(section);
+  if (after) await after(s);
+  await s.shoot(name);
+}];
+
+async function admin(browser, theme) {
+  console.log(`[${theme}] admin`);
+  return adminConsole(browser, theme, [
+    adminShot("admin-overview", "dashboard"),
+    adminShot("admin-plugins", "plugins"),
+    adminShot("admin-marketplace", "marketplace", { after: async () => { await sleep(4000); } }),
+    adminShot("admin-telemetry", "telemetry"),
+    adminShot("admin-updates", "version", { after: async (s) => { await s.mustClick('button:has-text("Check now")', "check for updates", 3000); await sleep(5000); } }),
+  ]);
+}
+
+// ── Login pages: a server with demo mode off ─────────────────────────────
 async function login(browser, theme) {
-  const base = process.env.SHOOT_LOGIN_BASE;
-  if (!base) { console.log(`[${theme}] login skipped (SHOOT_LOGIN_BASE unset)`); return null; }
-  const ctx = await newContext(browser, { theme });
-  const s = new Session(await ctx.newPage(), theme);
-  console.log(`[${theme}] login at ${base}`);
-  await s.page.goto(`${base}/login`, { waitUntil: "domcontentloaded" });
-  await sleep(3500);
-  const user = s.page.locator('input[type="text"], input[type="email"], input[name="username"]').first();
-  if (await user.count()) await user.fill("nora@meridianlabs.example").catch(() => {});
-  await s.page.addStyleTag({ content: "nextjs-portal, [data-nextjs-toast] { display: none !important; }" }).catch(() => {});
-  await sleep(600);
-  await s.page.screenshot({ type: "png" }).then(async (buf) => {
-    const { loadSharp } = await import("./lib/paths.mjs");
-    await loadSharp()(buf).webp({ quality: 82, effort: 6 }).toFile(path.join(SHOTS_DIR, `${theme}-login.webp`));
-    s.log(`+ ${theme}-login.webp`);
-  });
-  await ctx.close();
-  return s;
+  const api = await adminApi();
+  if (!api) { console.log(`[${theme}] login skipped (no admin session for the non-demo instance)`); return null; }
+  const port = new URL(BASE).port;
+  const sessions = [];
+  const page = async (name, host, config, { user = "" } = {}) => {
+    if (!want(name)) return;
+    await api.patchConfig(config);
+    const ctx = await newContext(browser, { theme });
+    const s = new Session(await ctx.newPage(), theme);
+    console.log(`[${theme}] ${name} at ${host}`);
+    await s.page.clock.setFixedTime(new Date());
+    await s.page.goto(`http://${host}:${port}/login`, { waitUntil: "domcontentloaded" });
+    await s.page.locator('input[type="password"], button:has-text("Sign in")').first().waitFor({ state: "visible", timeout: 60000 }).catch(() => s.misses.push(`${name} form`));
+    await sleep(2500);
+    if (user) {
+      const field = s.page.locator('input[type="email"], input[name="username"], input[autocomplete="username"]').first();
+      if (await field.count()) { await field.fill(user); await sleep(1200); } else s.misses.push(`${name} username field`);
+    }
+    await s.shoot(name, { allowLogin: true });
+    await ctx.close();
+    sessions.push(s);
+  };
+  await page("login-sso", "localhost", LOGIN_CONFIGS.sso);
+  await page("login", "localhost", LOGIN_CONFIGS.plain);
+  await page("login-branded", BRANDED_HOST, LOGIN_CONFIGS.plain);
+  await page("login-servers", "localhost", LOGIN_CONFIGS.servers, { user: "nora@meridianlabs.example" });
+  await api.patchConfig(LOGIN_CONFIGS.plain);
+  return sessions;
 }
 
-// ── Setup wizard: empty admin dirs, no JMAP_SERVER_URL, the token from the log
+// ── Setup wizard: empty admin dirs, no JMAP_SERVER_URL, the token from the state dir
 async function setup(browser, theme) {
-  const base = process.env.SHOOT_SETUP_BASE;
   const token = process.env.SHOOT_SETUP_TOKEN;
-  if (!base || !token) { console.log(`[${theme}] setup skipped (SHOOT_SETUP_BASE / SHOOT_SETUP_TOKEN unset)`); return null; }
+  if (!token) { console.log(`[${theme}] setup skipped (SHOOT_SETUP_TOKEN unset)`); return null; }
   const ctx = await newContext(browser, { theme });
   const s = new Session(await ctx.newPage(), theme);
-  console.log(`[${theme}] setup wizard at ${base}`);
-  await s.page.goto(`${base}/setup#token=${token}`, { waitUntil: "domcontentloaded" });
-  await sleep(4000);
+  console.log(`[${theme}] setup wizard at ${BASE}`);
+  await s.page.goto(`${BASE}/setup#token=${token}`, { waitUntil: "domcontentloaded" });
+  await sleep(6000);
   // Over plain http the wizard first asks for an acknowledgement.
   if (await s.tryClick('button:has-text("Continue over HTTP")', 3000)) await sleep(2500);
   // Welcome: paste the token (the fragment is read too, but typing it is
   // reliable) and Continue verifies it.
   const tokenField = s.page.locator('input[placeholder*="hex token" i]').first();
   if (await tokenField.count()) { await tokenField.fill(token); await sleep(500); }
-  if (want("setup-welcome")) await s.shoot("setup-welcome");
+  if (want("setup-welcome")) await s.shoot("setup-welcome", { allowLogin: true });
   await s.mustClick('button:has-text("Continue")', "setup token step");
   await sleep(3500);
-  // Server: the test server makes the probe go green.
+  // Server: the organisation's address, typed in. No "Test": a probe against
+  // a server that doesn't exist would only show an error.
   const server = s.page.locator('input[placeholder="https://"], input[type="url"]').first();
-  if (await server.count()) {
-    await server.fill(process.env.SHOOT_SETUP_SERVER || "https://stalwart.internal.bulwarkmail.org").catch(() => {});
-    await s.tryClick('button:has-text("Test")', 3000);
-    await sleep(6000);
-  } else s.misses.push("setup server field");
-  if (want("setup-server")) await s.shoot("setup-server");
+  if (await server.count()) await server.fill(`https://${WORK_HOST}`).catch(() => {});
+  else s.misses.push("setup server field");
+  await sleep(1000);
+  if (want("setup-server")) await s.shoot("setup-server", { allowLogin: true });
   // Auth, security, logging, branding, review: Next through them.
   const steps = [["setup-auth", true], ["setup-security", false], ["setup-logging", false], ["setup-branding", true], ["setup-review", true]];
   for (const [name, shoot] of steps) {
     if (!(await s.mustClick('button:has-text("Next")', name))) break;
     await sleep(3000);
     await s.page.evaluate(() => window.scrollTo(0, 0));
-    if (shoot && want(name)) await s.shoot(name);
+    if (shoot && want(name)) await s.shoot(name, { allowLogin: true });
   }
   await ctx.close();
   return s;
 }
 
 const FLOWS = { desktop, columns, phone, pwa, admin, login, setup };
+const PER_RUN = new Set(["pwa"]);
 
 (async () => {
   ensureDir(SHOTS_DIR);
   const browser = await launchBrowser();
   const sessions = [];
   const flows = Object.entries(FLOWS).filter(([name]) => !FLOW_FILTER || FLOW_FILTER.has(name));
+  const unknownFlows = FLOW_FILTER ? [...FLOW_FILTER].filter((f) => !FLOWS[f]) : [];
+  if (unknownFlows.length) console.log(`no flow ${unknownFlows.join(", ")} here; the flows are ${Object.keys(FLOWS).join(", ")}`);
   for (const [name, flow] of flows) {
-    if (name === "pwa") { await pwa(browser); continue; }
-    for (const theme of THEMES) {
-      const s = await flow(browser, theme).catch((e) => { console.log(`  ! ${name} (${theme}) failed: ${e.message}`); return { misses: [`${name} ${theme}: ${e.message}`], errors: [], written: [] }; });
-      if (s) sessions.push(s);
+    for (const theme of PER_RUN.has(name) ? [null] : THEMES) {
+      const r = await flow(browser, theme).catch((e) => { console.log(`  ! ${name} (${theme}) failed: ${e.message}`); return { misses: [`${name} ${theme}: ${e.message}`], errors: [], written: [] }; });
+      if (r) sessions.push(...(Array.isArray(r) ? r : [r]));
     }
   }
   await browser.close();

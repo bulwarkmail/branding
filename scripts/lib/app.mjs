@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { loadChromium, loadSharp, SHOTS_DIR, ensureDir } from "./paths.mjs";
+import { AdminApi, OFFICE_IP } from "./instance.mjs";
 
 export const BASE = process.env.SHOOT_BASE || "http://localhost:3100";
 
@@ -38,7 +39,8 @@ export const HIDE_DEV_CHROME = `
 `;
 
 export async function launchBrowser() {
-  return loadChromium().launch();
+  // --lang: native date and time inputs follow it, not the context locale.
+  return loadChromium().launch({ args: ["--lang=en-US"] });
 }
 
 /**
@@ -56,8 +58,9 @@ export async function newContext(browser, { theme, size = DESKTOP, settings = nu
     reducedMotion: "reduce",
     // Without this the app follows the machine and renders in German.
     locale: "en-US",
-    extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
     timezoneId: process.env.SHOOT_TZ || "Europe/Berlin",
+    // The admin audit log records this address (lib/instance.mjs OFFICE_IP).
+    extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9", "X-Forwarded-For": OFFICE_IP },
   });
   await ctx.addInitScript(({ theme, settings, storage }) => {
     try {
@@ -75,9 +78,36 @@ export async function newContext(browser, { theme, size = DESKTOP, settings = nu
   return ctx;
 }
 
+/**
+ * The admin session shoot-all.mjs signed in (SHOOT_ADMIN_COOKIE_FILE), or a
+ * new one with SHOOT_ADMIN_PASSWORD. One session for the whole run: the
+ * admin login allows five tries per 15 minutes.
+ */
+let adminSession = null;
+export async function adminApi() {
+  if (adminSession) return adminSession;
+  const file = process.env.SHOOT_ADMIN_COOKIE_FILE;
+  if (!file && !process.env.SHOOT_ADMIN_PASSWORD) return null;
+  adminSession = await new AdminApi(BASE, file || path.join(SHOTS_DIR, "..", "admin-cookie.txt")).signIn().catch((e) => { console.log(`  ! ${e.message}`); return null; });
+  return adminSession;
+}
+
+/**
+ * Put the admin session into a browser context before anything loads, as
+ * if the admin had signed in to the console in this browser first. The demo
+ * then gets the whole organisation policy and the admin's plugins.
+ */
+export async function withAdmin(ctx, host = new URL(BASE).hostname) {
+  const api = await adminApi();
+  if (!api) return false;
+  await ctx.addCookies(api.browserCookies(host));
+  return true;
+}
+
 export class Session {
-  constructor(page, theme, { out = SHOTS_DIR, label = "" } = {}) {
+  constructor(page, theme, { out = SHOTS_DIR, label = "", base = BASE } = {}) {
     this.page = page;
+    this.base = base;
     this.theme = theme;
     this.out = ensureDir(out);
     this.label = label;
@@ -92,7 +122,8 @@ export class Session {
   async signIn() {
     const { page } = this;
     await page.clock.setFixedTime(pinnedClock());
-    await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${this.base}/login`, { waitUntil: "domcontentloaded" });
+    await page.locator('button:has-text("Launch Demo"), button:has-text("Sign in")').first().waitFor({ state: "visible", timeout: 120000 }).catch(() => {});
     await sleep(2500);
     // Demo mode: "Launch Demo". A credential form: "Sign in" (type="button").
     await page.locator('button:has-text("Launch Demo"), button:has-text("Sign in"), button[type="submit"]').first().click({ timeout: 30000 });
@@ -125,7 +156,8 @@ export class Session {
 
   /** The app rail. Full page loads drop the demo session, so navigate in-app only. */
   async rail(name, wait = 6000) {
-    const ok = await this.tryClick(`[data-tour="nav-${name}"], [aria-label="${cap(name)}"], a[href$="/${name}"]`, 6000);
+    // The rail's own marker first; the others are for layouts without it (the phone).
+    const ok = (await this.tryClick(`[data-tour="nav-${name}"]:visible`, 6000)) || (await this.tryClick(`[aria-label="${cap(name)}"]:visible, a[href$="/${name}"]:visible`, 3000));
     if (!ok) { this.log(`? ${name} is not on the rail`); this.misses.push(`rail ${name}`); return false; }
     await sleep(wait);
     await this.tryClick('button:has-text("Got it")', 1500);
@@ -185,8 +217,8 @@ export class Session {
    * Save `<theme>-<name>.webp` (and the PNG with SHOOT_PNG=1). The cursor is
    * parked top-right so no list row shows its hover actions.
    */
-  async shoot(name, { png = process.env.SHOOT_PNG === "1", quality = 82, moveMouse = true } = {}) {
-    if (!(await this.onApp(name))) { this.log(`x ${name} bounced to login`); return null; }
+  async shoot(name, { png = process.env.SHOOT_PNG === "1", quality = 82, moveMouse = true, allowLogin = false } = {}) {
+    if (!allowLogin && !(await this.onApp(name))) { this.log(`x ${name} bounced to login`); return null; }
     await this.page.addStyleTag({ content: HIDE_DEV_CHROME }).catch(() => {});
     if (moveMouse) await this.page.mouse.move(this.page.viewportSize().width - 6, 6);
     await sleep(900);
@@ -210,15 +242,184 @@ export class Session {
     this.log(`+ ${path.basename(file)}`);
   }
 
+  /** Recipient and subject of an open composer. */
+  async fillComposer({ to, subject }) {
+    const toField = this.page.locator('input[placeholder*="Recipient" i], input[placeholder*="To" i], input[name="to"]').first();
+    if (to && (await toField.count())) {
+      await toField.click().catch(() => {});
+      await this.page.keyboard.type(to, { delay: 15 });
+      await this.page.keyboard.press("Enter");
+      await sleep(500);
+      await this.page.keyboard.press("Tab");
+    } else if (to) this.misses.push("composer recipient field");
+    const subjectField = this.page.locator('input[placeholder*="Subject" i], input[name="subject"]').first();
+    if (subject && (await subjectField.count())) {
+      await subjectField.click({ force: true }).catch(() => {});
+      await this.page.keyboard.type(subject, { delay: 15 });
+    } else if (subject) this.misses.push("composer subject field");
+  }
+
+  /** Type into the composer body, at its start (above a quote or signature). */
+  async typeBody(text) {
+    const body = this.page.locator(".ProseMirror").first();
+    if (!(await body.count())) { this.misses.push("composer editor"); return; }
+    await body.click({ position: { x: 40, y: 12 } }).catch(() => {});
+    await this.page.keyboard.press("Control+Home");
+    await this.page.keyboard.type(text, { delay: 3 });
+    await sleep(600);
+  }
+
+  /** Add an address to the composer's Cc row (opening the row first). */
+  async addCc(address) {
+    await this.tryClick('button:visible:text-is("Cc")', 3000);
+    const cc = this.page.locator('input[placeholder*="Cc" i], input[name="cc"], input[aria-label*="Cc" i]').first();
+    if (!(await cc.count())) { this.misses.push("Cc field"); return; }
+    await cc.click().catch(() => {});
+    await this.page.keyboard.type(address, { delay: 12 });
+    await this.page.keyboard.press("Enter");
+    await sleep(600);
+  }
+
+  /** The own Inbox: the first "Inbox" in the sidebar. */
+  async ownInbox() {
+    const ok = await this.mustClick('[data-tour="sidebar"] >> text=/^Inbox$/', "own inbox");
+    await sleep(2500);
+    return ok;
+  }
+
+  /** The Support group's Inbox: expand Shared and Support, then the second "Inbox". */
+  async openSupportInbox() {
+    const sidebar = '[data-tour="sidebar"]';
+    const inboxes = this.page.locator(`${sidebar} >> text=/^Inbox$/`);
+    if ((await inboxes.count()) < 2) {
+      await this.tryClick(`${sidebar} >> text=/^Shared$/`, 3000);
+      await sleep(500);
+      if ((await inboxes.count()) < 2) await this.tryClick(`${sidebar} >> text=/^Support$/`, 3000);
+      await sleep(800);
+    }
+    const ok = await inboxes.nth(1).click({ timeout: 8000 }).then(() => true).catch(() => false);
+    if (!ok) { this.misses.push("Support inbox"); return false; }
+    await sleep(3000);
+    return true;
+  }
+
+  /** Settings from the rail, waiting for its page list. */
+  async openSettings() {
+    if (!(await this.rail("settings", 3000))) return false;
+    const ok = await this.page.getByRole("button", { name: "Appearance", exact: true }).or(this.page.getByRole("link", { name: "Appearance", exact: true })).first()
+      .waitFor({ state: "visible", timeout: 60000 }).then(() => true).catch(() => false);
+    if (!ok) this.misses.push("settings pages");
+    await sleep(1500);
+    return ok;
+  }
+
+  /**
+   * One settings page by its name in the list. The pane keeps the previous
+   * page's scroll position, so scroll it back to the top.
+   */
+  async settingsPage(label) {
+    // Inside the settings list: the rail has a Notifications button too.
+    const list = this.page.locator('nav[aria-label="Settings"]');
+    const nav = list.getByRole("button", { name: label, exact: true }).or(list.getByRole("link", { name: label, exact: true })).first();
+    const ok = await nav.click({ timeout: 8000 }).then(() => true).catch(() => false);
+    if (!ok) { this.log(`! no settings page ${label}`); this.misses.push(`settings page ${label}`); return false; }
+    await sleep(2000);
+    await this.scrollToTop();
+    return true;
+  }
+
+  async scrollToTop() {
+    await this.page.evaluate(() => {
+      for (const el of document.querySelectorAll("main, main *")) if (el.scrollTop > 0) el.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }).catch(() => {});
+    await sleep(800);
+  }
+
+  /** Scroll a settings or admin section (SettingsSection id) to the top of the pane. */
+  async scrollToSection(id, why = id) {
+    const ok = await this.page.evaluate((id) => {
+      const el = document.querySelector(`[data-settings-section="${id}"]`);
+      if (!el) return false;
+      el.scrollIntoView({ block: "start" });
+      return true;
+    }, id).catch(() => false);
+    if (!ok) { this.log(`! no section ${id}`); this.misses.push(`section ${why}`); }
+    await sleep(1000);
+    return ok;
+  }
+
+  /** The settings sidebar's "Show advanced settings" switch. */
+  async showAdvanced() {
+    const sw = this.page.locator('[data-testid="settings-advanced-switch"]').first();
+    if (!(await sw.count())) { this.misses.push("advanced settings switch"); return; }
+    if ((await sw.getAttribute("aria-checked")) !== "true") { await sw.click().catch(() => this.misses.push("advanced settings switch")); await sleep(1000); }
+  }
+
+  /** Turn on an admin-installed plugin the admin didn't force on (Settings > Add-ons). */
+  async enablePlugin(name) {
+    if (!(await this.openSettings()) || !(await this.settingsPage("Add-ons"))) return false;
+    const sw = this.page.locator(`[role="switch"][aria-label="Turn ${name} on or off"]`).first();
+    const ok = await sw.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
+    if (!ok) { this.misses.push(`plugin ${name} in Add-ons`); await this.backToMail(); return false; }
+    if ((await sw.getAttribute("aria-checked")) !== "true") { await sw.click(); await sleep(3000); }
+    await this.backToMail();
+    return true;
+  }
+
+  /** From settings back to mail, by the rail. */
+  async backToMail() {
+    await this.rail("mail", 3000);
+  }
+
+  /** The calendar's week view, scrolled to the working day. */
+  async weekView() {
+    await this.mustClick('[data-testid="calendar-view-menu"]', "calendar view menu");
+    await this.mustClick('[role="menuitemradio"]:has-text("Week")', "week view");
+    await sleep(2000);
+    await this.tryClick('button:has-text("Today")', 3000);
+    await sleep(1500);
+    await this.page.locator("text=/^07:00$/").first().evaluate((el) => el.scrollIntoView({ block: "start" })).catch(() => {});
+    await sleep(1200);
+  }
+
+  /** An admin console page from its sidebar. */
+  async adminPage(id) {
+    const ok = await this.mustClick(`[data-testid="admin-page-${id}"]`, `admin page ${id}`);
+    await sleep(3500);
+    await this.scrollToTop();
+    return ok;
+  }
+
+  /** A section chip at the top of an admin page (it scrolls to the section). */
+  async adminSection(title) {
+    const ok = await this.mustClick(`main button:text-is("${title}")`, `admin section ${title}`, 5000);
+    await sleep(1500);
+    return ok;
+  }
+
   /** Close an open composer, discarding the draft if it asks. */
   async closeComposer() {
-    for (let i = 0; i < 4; i++) {
-      const discard = this.page.locator('button:has-text("Discard")').last();
-      if (await discard.isVisible().catch(() => false)) { await discard.click({ timeout: 4000 }).catch(() => {}); await sleep(1200); }
-      if (!(await this.page.locator('text=New Message').first().isVisible().catch(() => false))) break;
+    const editor = this.page.locator(".ProseMirror").first();
+    for (let i = 0; i < 5; i++) {
+      // A question on top (send confirmation, discard draft?) first.
+      const dialog = this.page.locator('[role="alertdialog"]:visible, [role="dialog"]:visible').last();
+      if (await dialog.count()) {
+        // In this order: a comma list would match in page order, and Cancel comes first there.
+        let answered = false;
+        for (const label of ["Discard", "Back", "Cancel"]) {
+          const answer = dialog.locator(`button:text-is("${label}")`).first();
+          if (await answer.count()) { await answer.click({ timeout: 4000 }).catch(() => {}); await sleep(1000); answered = true; break; }
+        }
+        if (answered) continue;
+      }
+      if (!(await editor.isVisible().catch(() => false))) return;
+      const discard = this.page.locator('button:visible:text-is("Discard")').last();
+      if (await discard.count()) { await discard.click({ timeout: 4000 }).catch(() => {}); await sleep(1200); continue; }
       await this.page.keyboard.press("Escape");
       await sleep(1200);
     }
+    if (await editor.isVisible().catch(() => false)) this.misses.push("composer did not close");
   }
 }
 
