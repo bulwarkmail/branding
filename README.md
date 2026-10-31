@@ -45,7 +45,6 @@ tokens/               Design tokens as CSS custom properties and JSON
 | Use                  | File                        | Size        |
 | -------------------- | --------------------------- | ----------- |
 | Open Graph, Bulwark  | `social/og-full.png`        | 1200 × 630  |
-| Open Graph, Lite     | `social/og-lite.png`        | 1200 × 630  |
 | X header             | `social/twitter-header.png` | 1500 × 500  |
 | X profile picture    | `social/twitter-avatar.png` | 400 × 400   |
 | GitHub profile image | `social/github-avatar.png`  | 500 × 500   |

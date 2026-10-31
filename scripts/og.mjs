@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * Render the Open Graph cards, one per edition:
+ * Render the Open Graph card:
  *
  *   node scripts/og.mjs
  *
  * 1200x630 PNG (social crawlers are unreliable with WebP), drawn in HTML: the
- * edition's flat field, the mark and wordmark, the hero heading, and the light
+ * raspberry field, the mark and wordmark, the hero heading, and the light
  * inbox capture leaving the card at the right and the bottom. Output:
- * .staging/cards/og-{full,lite}.png; `sync` copies them to the website and
- * to social/ in this repo.
+ * .staging/cards/og-full.png; `sync` copies it to the website and to social/
+ * in this repo.
  */
 import path from "node:path";
 import { PALETTE, FONT_LINK, dataUri, loadChromium, renderHtml, writePng, markSvg } from "./lib/render.mjs";
@@ -19,7 +19,6 @@ const H = 630;
 
 const EDITIONS = {
   full: { file: "og-full.png", field: PALETTE.rasp, name: "Bulwark", heading: "Webmail for Stalwart Mail Server." },
-  lite: { file: "og-lite.png", field: PALETTE.teal, name: "Bulwark Lite", heading: "Webmail for Stalwart, served as static files." },
 };
 
 function html(e, shot) {

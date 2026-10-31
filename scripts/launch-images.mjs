@@ -8,10 +8,10 @@
  *
  * The boards follow the "Stalwart 1.0 Launch Graphics" canvas:
  *
- *   card    og-{full,lite}-{light,dark}.png  1200x630   link card per edition, light or dark inbox
- *   post    post.png                         1600x900   Bulwark and Stalwart 1.0 over JMAP, six ticks
- *   square  square.png                       1080x1080  the six capabilities as tiles
- *   header  profile-header.png               1500x500   same safe areas as twitter-header.mjs
+ *   card    og-full-{light,dark}.png  1200x630   link card, light or dark inbox
+ *   post    post.png                  1600x900   Bulwark and Stalwart 1.0 over JMAP, six ticks
+ *   square  square.png                1080x1080  the six capabilities as tiles
+ *   header  profile-header.png        1500x500   same safe areas as twitter-header.mjs
  *
  * WHAT THE TICKS STAND FOR. The post and the square tick six capabilities, and
  * each tick claims a feature checked against Stalwart's v1.0.0 branch:
@@ -26,9 +26,8 @@
  *
  * Rules the boards keep: "Stalwart" is plain text, with no logo and never
  * "official", "certified" or "partner". Raspberry is Bulwark and neutral grey is
- * Stalwart, so no Stalwart element sits on the raspberry field; the Lite cards
- * use teal. Headings are Hanken Grotesk at 400, radius 0, no shadows, no
- * gradients. The post and the square carry the trademark line.
+ * Stalwart, so no Stalwart element sits on the raspberry field. Headings are
+ * Hanken Grotesk at 400, radius 0, no shadows, no gradients. The post and the square carry the trademark line.
  *
  * Fonts come from Google Fonts, so rendering needs network access. The script
  * stops when a face fails to load rather than render in a fallback font.
@@ -44,7 +43,6 @@ const T = { page: "#ffffff", text: "#18181b", muted: "#56565d", surface: "#f4f4f
 
 const EDITIONS = {
   full: { field: PALETTE.rasp, name: ["Bulwark"] },
-  lite: { field: PALETTE.teal, name: ["Bulwark", "Lite"] },
 };
 
 const HEADING = "Bulwark works with Stalwart 1.0.";
