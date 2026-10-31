@@ -612,6 +612,111 @@ async function org(browser, theme) {
   return s;
 }
 
+// ── Small business: the team's mailbox and calendars ─────────────────────
+async function smallbiz(browser, theme) {
+  const ctx = await newContext(browser, { theme });
+  const s = new Session(await ctx.newPage(), theme);
+  console.log(`[${theme}] small business`);
+  await s.signIn();
+
+  if (want("shared-mailbox", "shared-mailbox-reply") && await s.openSupportInbox()) {
+    await s.mustClick(`text=${F.support}`, "support request");
+    await sleep(2500);
+    if (want("shared-mailbox")) await s.shoot("shared-mailbox");
+    if (want("shared-mailbox-reply")) {
+      await s.mustClick('button:has-text("Reply")', "reply from the group");
+      await sleep(3000);
+      await s.typeBody("Hello Tomás,\n\nYes: the add-on goes to 100 tenants without a new contract. I've raised your limit, and the canary keeps its own five.");
+      await s.shoot("shared-mailbox-reply");
+      await s.closeComposer();
+    }
+  }
+
+  if (want("vacation") && await s.openSettings()) {
+    if (await s.settingsPage("Out of office")) {
+      // The fixture has the reply filled in for the Lisbon trip but off; turn it on.
+      await sleep(1500);
+      const sw = s.page.locator('main [role="switch"]').first();
+      if (await sw.count()) {
+        if ((await sw.getAttribute("aria-checked")) !== "true") { await sw.click(); await sleep(1500); }
+      } else s.misses.push("out of office switch");
+      await s.tryClick('main button:visible:text-is("Save")', 3000);
+      await sleep(1500);
+      await s.scrollToTop();
+      await s.shoot("vacation");
+    }
+    await s.backToMail();
+  }
+
+  if (want("calendar-shared", "calendar-availability") && await s.rail("calendar")) {
+    await s.weekView();
+    if (want("calendar-shared")) await s.shoot("calendar-shared");
+    if (want("calendar-availability") && await s.mustClick('button[aria-label="Create event"]', "create event button")) {
+      await sleep(2500);
+      const title = s.page.locator('input[placeholder*="title" i], input[name="title"]').first();
+      if (await title.count()) { await title.fill("Beacon launch retro"); }
+      const att = s.page.locator('input[placeholder*="ttendee" i], input[placeholder*="articipant" i], input[placeholder*="Add people" i], input[placeholder*="email" i]').first();
+      if (await att.count()) {
+        for (const who of ["bob.chen@meridianlabs.example", "alice.johnson@meridianlabs.example", "priya.sharma@meridianlabs.example"]) {
+          await att.click();
+          await s.page.keyboard.type(who, { delay: 8 });
+          await s.page.keyboard.press("Enter");
+          await sleep(1200);
+        }
+        // Close the suggestions, move the event to an afternoon slot, show the list.
+        await s.page.locator("text=Participants").first().click().catch(() => {});
+        const times = s.page.locator('input[type="time"]');
+        if ((await times.count()) >= 2) { await times.nth(0).fill("15:00"); await times.nth(1).fill("16:00"); }
+        await s.page.locator("text=Participants").first().click().catch(() => {});
+        await sleep(2500);
+        await s.page.locator("text=Participants").first().evaluate((el) => el.scrollIntoView({ block: "start" })).catch(() => {});
+        await sleep(1000);
+        await s.shoot("calendar-availability");
+      } else s.misses.push("attendee field");
+      await s.page.keyboard.press("Escape");
+      await sleep(800);
+      await s.tryClick('button:has-text("Discard")', 1500);
+    }
+  }
+  await ctx.close();
+
+  // Plugins the admin uploaded: they need the admin session in the browser.
+  if (want("team-inbox", "e-invoice")) {
+    const pctx = await newContext(browser, { theme });
+    const p = new Session(await pctx.newPage(), theme);
+    if (!(await withAdmin(pctx))) p.misses.push("admin session (SHOOT_ADMIN_COOKIE_FILE)");
+    await p.signIn();
+    if (want("team-inbox")) await p.enablePlugin("Team inbox");
+    if (want("e-invoice")) await p.enablePlugin("E-Invoices");
+    if (want("team-inbox") && await p.openSupportInbox()) {
+      await sleep(3000);
+      await p.mustClick(`text=${F.support}`, "support request");
+      await sleep(3000);
+      await p.shoot("team-inbox");
+    }
+    if (want("e-invoice")) {
+      await p.ownInbox();
+      if (await p.open(F.eInvoice.query, F.eInvoice.row, "e-invoice mail")) {
+        await sleep(4000);
+        // "Show invoice" is in the plugin's banner frame.
+        let shown = false;
+        for (const f of p.page.frames()) {
+          const b = f.getByRole("button", { name: "Show invoice" });
+          if (await b.count().catch(() => 0)) { await b.first().click().catch(() => {}); shown = true; break; }
+        }
+        if (!shown) p.misses.push("Show invoice button");
+        await sleep(3500);
+        await p.shoot("e-invoice");
+        await p.page.keyboard.press("Escape");
+      }
+      await p.clearSearch();
+    }
+    await pctx.close();
+    return [s, p];
+  }
+  return s;
+}
+
 // ── Login pages: a server with demo mode off ─────────────────────────────
 async function login(browser, theme) {
   const api = await adminApi();
@@ -681,7 +786,7 @@ async function setup(browser, theme) {
   return s;
 }
 
-const FLOWS = { desktop, columns, phone, pwa, admin, org, orgadmin, login, setup };
+const FLOWS = { desktop, columns, phone, pwa, admin, org, orgadmin, smallbiz, login, setup };
 const PER_RUN = new Set(["pwa"]);
 
 (async () => {
