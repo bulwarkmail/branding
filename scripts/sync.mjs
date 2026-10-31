@@ -72,8 +72,8 @@ copyAll(FRAMED_DIR, path.join(WEBSITE, "public", "press", "beauty"), webp);
 const README_FRAMES = /^(light|dark)-(laptop-phone|calendar-week|contacts-detail|composer-mention)\.webp$|^split-inbox\.webp$/;
 copyAll(FRAMED_DIR, path.join(WEBMAIL, "screenshots"), (n) => README_FRAMES.test(n));
 
-// Cards.
-copyAll(CARDS_DIR, path.join(WEBSITE, "public"), (n) => /^og-(full|lite)\.png$/.test(n));
+// Cards: the site's own and one per audience page.
+copyAll(CARDS_DIR, path.join(WEBSITE, "public"), (n) => /^og-(full|organisations|small-business|homelab)\.png$/.test(n));
 copyAll(CARDS_DIR, path.join(WEBSITE, "public", "press"), (n) => png(n) && noGuides(n));
 copyAll(CARDS_DIR, path.join(BRANDING, "social"), png);
 copyAll(path.join(CARDS_DIR, "launch"), path.join(WEBSITE, "public", "press", "launch"), png);
