@@ -53,7 +53,6 @@ export const PALETTE = {
   navyDeep: "#070b16",
   ink: "#0c1322",
   rasp: "#db2d54",
-  teal: "#0f8578",
   rule: "#dddde1",
 };
 

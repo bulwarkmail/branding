@@ -1,9 +1,8 @@
 /* ======================================================================
    Bulwark design tokens. The rules behind them are in GUIDELINES.md.
 
-   Theme:   .dark on <html>.
-   Edition: data-edition="lite" on <html>. Lite swaps brand, field, link
-            and focus to teal and changes nothing else.
+   Theme: .dark on <html>. There is one colourway, for Bulwark and Lite
+   alike.
 
    Components read these tokens, never hex values.
    ====================================================================== */
@@ -15,7 +14,7 @@
   --bw-text: #18181b;
   --bw-text-muted: #56565d;
   --bw-rule: #dddde1; /* tile edges, table rows, image frames */
-  --bw-control: #7f7f87; /* input, outlined button and edition switch borders */
+  --bw-control: #7f7f87; /* input, outlined button and segmented control borders */
 
   /* brand */
   --bw-brand: #db2d54;
@@ -77,19 +76,6 @@
   --bw-warning: #e2b341;
   --bw-success: #4cc38a;
   color-scheme: dark;
-}
-
-/* Bulwark Lite: white on teal is 4.5:1, links hold 6.4:1 and 10.4:1. */
-:root[data-edition="lite"] {
-  --bw-brand: #0f8578;
-  --bw-field: #0f8578;
-  --bw-link: #0a6b60;
-  --bw-focus: #0a6b60;
-}
-.dark[data-edition="lite"] {
-  --bw-field: #0c7267;
-  --bw-link: #6fd3c5;
-  --bw-focus: #6fd3c5;
 }
 
 @media (max-width: 1024px) {

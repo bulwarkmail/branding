@@ -13,8 +13,7 @@ The mark comes in three colours, each for its own ground. The geometry of the ma
 | `logo/Bulwark Logo White` | Dark grounds and the field |
 | `logo-with-lettering/… Dark Color` | Light grounds |
 | `logo-with-lettering/… White and Color` | Dark grounds |
-| `favicon/Bulwark Favicon` | Browser tabs, Bulwark |
-| `favicon/Bulwark Favicon Lite` | Browser tabs, Bulwark Lite |
+| `favicon/Bulwark Favicon` | Browser tabs, Bulwark and Lite |
 
 ### Rules for using the logo
 
@@ -45,44 +44,44 @@ Three habits bring the generic look back:
 
 Colour is assigned by role. Components read tokens, never hex values. The grounds are neutral grey, so the only colour on a page is the brand itself. The tokens are in [`tokens/bulwark.css`](tokens/bulwark.css) and [`tokens/tokens.json`](tokens/tokens.json).
 
-| Role | Token | Light | Dark | Lite, light | Lite, dark | Used for |
-| --- | --- | --- | --- | --- | --- | --- |
-| Page | `--bw-page` | `#ffffff` | `#131315` | `#ffffff` | `#131315` | Page ground |
-| Surface | `--bw-surface` | `#f4f4f5` | `#1f1f22` | `#f4f4f5` | `#1f1f22` | Quiet bands, footer, code blocks, notes, tile hover |
-| Text | `--bw-text` | `#18181b` | `#f2f2f3` | `#18181b` | `#f2f2f3` | Headings and body |
-| Muted text | `--bw-text-muted` | `#56565d` | `#ababb2` | `#56565d` | `#ababb2` | Supporting paragraphs, captions |
-| Rule | `--bw-rule` | `#dddde1` | `#36363b` | `#dddde1` | `#36363b` | Tile edges, table rows, image frames |
-| Control border | `--bw-control` | `#7f7f87` | `#85858d` | `#7f7f87` | `#85858d` | Inputs, outlined buttons, the edition switch |
-| Brand | `--bw-brand` | `#db2d54` | `#db2d54` | `#0f8578` | `#0f8578` | Primary buttons, icons, the mark, note and active edges |
-| Field | `--bw-field` | `#db2d54` | `#c4264b` | `#0f8578` | `#0c7267` | Nav, hero, install section |
-| On field | `--bw-on-field` | `#ffffff` | `#ffffff` | `#ffffff` | `#ffffff` | Text and buttons on the field |
-| Link | `--bw-link` | `#c01f46` | `#ff91a8` | `#0a6b60` | `#6fd3c5` | Text links and the focus ring |
-| Ink | `--bw-ink` | `#18181b` | `#18181b` | `#18181b` | `#18181b` | Code and button hover on the field |
-| Error | `--bw-error` | `#b42318` | `#ff9b8f` | `#b42318` | `#ff9b8f` | Validation, with an icon and words |
-| Warning | `--bw-warning` | `#8a5d00` | `#e2b341` | `#8a5d00` | `#e2b341` | The warning note edge |
-| Success | `--bw-success` | `#17784a` | `#4cc38a` | `#17784a` | `#4cc38a` | The copied state |
+| Role | Token | Light | Dark | Used for |
+| --- | --- | --- | --- | --- |
+| Page | `--bw-page` | `#ffffff` | `#131315` | Page ground |
+| Surface | `--bw-surface` | `#f4f4f5` | `#1f1f22` | Quiet bands, footer, code blocks, notes, tile hover |
+| Text | `--bw-text` | `#18181b` | `#f2f2f3` | Headings and body |
+| Muted text | `--bw-text-muted` | `#56565d` | `#ababb2` | Supporting paragraphs, captions |
+| Rule | `--bw-rule` | `#dddde1` | `#36363b` | Tile edges, table rows, image frames |
+| Control border | `--bw-control` | `#7f7f87` | `#85858d` | Inputs, outlined buttons, segmented controls |
+| Brand | `--bw-brand` | `#db2d54` | `#db2d54` | Primary buttons, icons, the mark, note and active edges |
+| Field | `--bw-field` | `#db2d54` | `#c4264b` | Nav, hero, install section |
+| On field | `--bw-on-field` | `#ffffff` | `#ffffff` | Text and buttons on the field |
+| Link | `--bw-link` | `#c01f46` | `#ff91a8` | Text links and the focus ring |
+| Ink | `--bw-ink` | `#18181b` | `#18181b` | Code and button hover on the field |
+| Error | `--bw-error` | `#b42318` | `#ff9b8f` | Validation, with an icon and words |
+| Warning | `--bw-warning` | `#8a5d00` | `#e2b341` | The warning note edge |
+| Success | `--bw-success` | `#17784a` | `#4cc38a` | The copied state |
 
 ### Contrast
 
 WCAG 2.1 ratios for every pair the pages rely on. Text needs 4.5:1, borders and focus rings 3:1.
 
-| Pair | Minimum | Light | Dark | Lite, light | Lite, dark |
-| --- | --- | --- | --- | --- | --- |
-| Text on page | 4.5:1 | 17.7:1 | 16.6:1 | 17.7:1 | 16.6:1 |
-| Text on surface | 4.5:1 | 16.1:1 | 14.7:1 | 16.1:1 | 14.7:1 |
-| Muted on page | 4.5:1 | 7.3:1 | 8.1:1 | 7.3:1 | 8.1:1 |
-| Muted on surface | 4.5:1 | 6.6:1 | 7.2:1 | 6.6:1 | 7.2:1 |
-| Link on page | 4.5:1 | 6.0:1 | 8.7:1 | 6.4:1 | 10.4:1 |
-| Link on surface | 4.5:1 | 5.4:1 | 7.7:1 | 5.8:1 | 9.2:1 |
-| Button text on brand | 4.5:1 | 4.65:1 | 4.65:1 | 4.52:1 | 4.52:1 |
-| Text on the field | 4.5:1 | 4.65:1 | 5.6:1 | 4.52:1 | 5.8:1 |
-| Ink text on the white field button | 4.5:1 | 17.7:1 | 17.7:1 | 17.7:1 | 17.7:1 |
-| Code on ink | 4.5:1 | 15.8:1 | 15.8:1 | 15.8:1 | 15.8:1 |
-| Control border on page | 3:1 | 4.0:1 | 5.1:1 | 4.0:1 | 5.1:1 |
-| Focus ring on page | 3:1 | 6.0:1 | 8.7:1 | 6.4:1 | 10.4:1 |
-| Error text on page | 4.5:1 | 6.6:1 | 9.1:1 | 6.6:1 | 9.1:1 |
+| Pair | Minimum | Light | Dark |
+| --- | --- | --- | --- |
+| Text on page | 4.5:1 | 17.7:1 | 16.6:1 |
+| Text on surface | 4.5:1 | 16.1:1 | 14.7:1 |
+| Muted on page | 4.5:1 | 7.3:1 | 8.1:1 |
+| Muted on surface | 4.5:1 | 6.6:1 | 7.2:1 |
+| Link on page | 4.5:1 | 6.0:1 | 8.7:1 |
+| Link on surface | 4.5:1 | 5.4:1 | 7.7:1 |
+| Button text on brand | 4.5:1 | 4.65:1 | 4.65:1 |
+| Text on the field | 4.5:1 | 4.65:1 | 5.6:1 |
+| Ink text on the white field button | 4.5:1 | 17.7:1 | 17.7:1 |
+| Code on ink | 4.5:1 | 15.8:1 | 15.8:1 |
+| Control border on page | 3:1 | 4.0:1 | 5.1:1 |
+| Focus ring on page | 3:1 | 6.0:1 | 8.7:1 |
+| Error text on page | 4.5:1 | 6.6:1 | 9.1:1 |
 
-White on raspberry and white on teal are the tight pairs. Text on the field is therefore never smaller than 17px, never lighter than 400 and never muted, and raspberry itself is never used for text on a grey ground. Raspberry is close to an error red, so errors and warnings have their own colours and always carry an icon and words.
+White on raspberry is the tight pair. Text on the field is therefore never smaller than 17px, never lighter than 400 and never muted, and raspberry itself is never used for text on a grey ground. Raspberry is close to an error red, so errors and warnings have their own colours and always carry an icon and words.
 
 ## Type
 
@@ -91,7 +90,7 @@ Hanken Grotesk sets everything except code, which is JetBrains Mono. Both famili
 | Style | Spec | Sample |
 | --- | --- | --- |
 | Display | 60 / 36 px · 400 · 1.06 · -0.015em | Webmail for Stalwart |
-| Heading 2 | 40 / 28 px · 400 · 1.12 · -0.015em | Two editions from the same code. |
+| Heading 2 | 40 / 28 px · 400 · 1.12 · -0.015em | Colour is assigned by role. |
 | Heading 3, tile title | 21 / 19 px · 400 · 1.2 · -0.015em | Bulwark Legacy Proxy |
 | Lead | 19 / 17 px · 400 · 1.45 | Bulwark puts mail, calendar, contacts and files in one browser client. |
 | Body | 17 / 16 px · 400 · 1.55 | The setup wizard finds your Stalwart server and sets the admin password. |
@@ -112,7 +111,7 @@ Pages sit on a 12-column grid with an 8px unit.
 
 Everything is square, flat and still.
 
-- **Border and radius.** 1px rules in the rule colour, 1px control borders, a 3px edge on notes. Radius is 0, and 2px on buttons, inputs, inline code and the edition switch. There are no shadows, gradients or blurs.
+- **Border and radius.** 1px rules in the rule colour, 1px control borders, a 3px edge on notes. Radius is 0, and 2px on buttons, inputs, inline code and segmented controls. There are no shadows, gradients or blurs.
 - **Focus ring.** 2px solid in the link colour, offset 2px. On the field the ring is white.
 - **Motion.** Colour and border changes take 120ms with ease-out. Nothing moves, fades in or scrolls into place, and with reduced motion the changes are instant.
 - **Icons.** Tabler Icons on a 24px grid with a 1.5px stroke, square caps and mitred joins. Sizes are 16, 20 and 24px, in the text colour or the brand colour, never inside a filled circle.
@@ -123,7 +122,7 @@ The pages are built from a small set of components.
 
 - **Buttons.** Primary is a brand fill, secondary an outline. On the field both turn white. One arrow, on the right, when the button goes somewhere. Every control in the nav is 36px high.
 - **Links.** Inline links are underlined in the link colour. A standalone link carries an arrow. Visited links keep their colour.
-- **Edition switch.** A two-part segmented control. The active side is filled with the text colour, and on the field it is filled white. The install section uses the wide form with full labels.
+- **Segmented control.** Tabs that switch one block of content in place, such as the install steps. The selected tab is filled with the text colour, and on the field it is filled white. It never switches the whole page.
 - **Tiles.** Tiles share their edges. Title top-left, one line of text, arrow bottom-right, an optional brand-coloured icon above the title. Hover fills the tile with the surface colour. The list form has no minimum height.
 - **Fact row and steps.** Facts are four unboxed columns: a brand icon, a title, one line. Numbered steps are used only for a real sequence, such as an install.
 - **Tables.** A strong rule under the header, light rules between rows, no vertical rules and no zebra. Wide tables scroll inside their own container.
@@ -134,11 +133,11 @@ The pages are built from a small set of components.
 
 ## Bulwark Lite
 
-Bulwark Lite is the same design in teal.
+Bulwark Lite is described in the text.
 
-1. **Four tokens change.** Brand, field, link and focus turn teal. Every neutral, the layout, the type and the radius stay as they are.
-2. **The mark keeps its geometry.** It takes the brand colour on a page ground and white on the field, so one asset serves Bulwark, Lite and the field. Lite has its own favicon.
-3. **Copy is written per edition.** Where the facts differ, both versions are written and the edition shows one. Pages that exist in one edition say so in a note.
+1. **One colourway.** Where Bulwark and Lite differ, the text says so. Lite has no colour, mark or favicon of its own.
+2. **No mode.** Nothing switches the site, or the copy across a page, between Bulwark and Lite. Tabs only switch one block in place, like the install steps.
+3. **Pages for one of them say so first.** A docs page that applies only to Bulwark or only to Lite opens with a "Not in Lite." or "Bulwark Lite." note.
 
 ## Writing
 
@@ -156,7 +155,7 @@ The social images follow the page: the flat field, the white mark and wordmark, 
 
 | File | Size | Safe area |
 | --- | --- | --- |
-| `og-full.png`, `og-lite.png` | 1200 × 630 | Open Graph card per edition |
+| `og-full.png` | 1200 × 630 | Open Graph card |
 | `twitter-header.png` | 1500 × 500 | The profile picture covers about x 0–400, y 300–500, and phones crop about 60px off the top and bottom. Text sits top-left inside y 60–440, and the corner under the avatar is empty field. |
 | `twitter-avatar.png` | 400 × 400 | Cropped to a circle. The mark is 56% of the edge and stays well inside it. |
 | `github-avatar.png` | 500 × 500 | Shown as a rounded square and down to 20px. The mark runs larger, at 64% of the edge. |
@@ -170,5 +169,5 @@ A profile bio follows the writing rules: "Open-source webmail for Stalwart Mail 
 - Count the labels above headings. Two at most, and none is better.
 - Read every heading aloud and rewrite any that sets something up in order to knock it down.
 - Measure every radius: 0, or 2px on a control.
-- Check light and dark, Bulwark and Lite, then a 390px phone.
+- Check light and dark, then a 390px phone.
 - Recheck the contrast table when a colour changes.

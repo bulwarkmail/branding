@@ -6,7 +6,7 @@ Official branding assets and the design system for Bulwark Mail. The rules for u
 
 ```
 GUIDELINES.md         Logo rules and the design system: colour, type, layout, components, writing
-favicon/              Favicon for Bulwark and Bulwark Lite in PNG and SVG
+favicon/              Favicon in PNG and SVG
   source/             Gravit Designer source files
 logo/                 Logo (icon only) in Color, Dark, and White variants
   source/             Gravit Designer source files
@@ -35,10 +35,11 @@ tokens/               Design tokens as CSS custom properties and JSON
 
 ### Favicon
 
-| Edition      | PNG                                | SVG                                |
-| ------------ | ---------------------------------- | ---------------------------------- |
-| Bulwark      | `favicon/Bulwark Favicon.png`      | `favicon/Bulwark Favicon.svg`      |
-| Bulwark Lite | `favicon/Bulwark Favicon Lite.png` | `favicon/Bulwark Favicon Lite.svg` |
+| PNG                           | SVG                           |
+| ----------------------------- | ----------------------------- |
+| `favicon/Bulwark Favicon.png` | `favicon/Bulwark Favicon.svg` |
+
+Bulwark Lite uses the same favicon and colours as Bulwark.
 
 ### Social
 
@@ -53,11 +54,11 @@ Every image except the Open Graph cards also comes at `@2x`, and each has a `-gu
 
 ## Colours
 
-| Token         | Bulwark   | Bulwark Lite |
-| ------------- | --------- | ------------ |
-| Brand, field  | `#db2d54` | `#0f8578`    |
-| Link          | `#c01f46` | `#0a6b60`    |
-| Text          | `#18181b` | `#18181b`    |
-| Surface       | `#f4f4f5` | `#f4f4f5`    |
+| Token        | Value     |
+| ------------ | --------- |
+| Brand, field | `#db2d54` |
+| Link         | `#c01f46` |
+| Text         | `#18181b` |
+| Surface      | `#f4f4f5` |
 
 The full set, with dark values, is in [`tokens/bulwark.css`](tokens/bulwark.css) and [`tokens/tokens.json`](tokens/tokens.json). Type is [Hanken Grotesk](https://fonts.google.com/specimen/Hanken+Grotesk) at weight 400, and code is [JetBrains Mono](https://www.jetbrains.com/lp/mono/).
