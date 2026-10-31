@@ -147,7 +147,7 @@ export const SCENARIOS = {
       const policy = await api.get("/api/admin/policy");
       await api.putPolicy({ ...policy, approvedPlugins: ["calendar-agenda", "translate", "paperless"] });
     },
-    flows: ["desktop", "columns", "phone", "pwa", "homelab", "admin"],
+    flows: ["desktop", "columns", "phone", "pwa", "homelab", "admin", "demologin"],
   },
 
   // Demo mode at Meridian Labs: the organisation policy, its plugins, the

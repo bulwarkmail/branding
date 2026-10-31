@@ -594,6 +594,25 @@ async function orgadmin(browser, theme) {
       await sleep(1500);
       await s.shoot("admin-branding");
     }],
+    // Accessibility presets as an admin sets them: the values picked and not
+    // yet saved, with the save bar. Discarded afterwards, so nothing else
+    // (and no audit entry) changes.
+    ["admin-accessibility", async (s) => {
+      if (!(await s.adminPage("policy"))) return;
+      const sec = s.page.locator('[data-testid="defaults-Accessibility"]');
+      if (!(await sec.count())) { s.misses.push("accessibility defaults"); return; }
+      await sec.locator('[role="switch"]').first().click().catch(() => s.misses.push("accessibility button preset"));
+      const selects = sec.locator("select");
+      await selects.nth(0).selectOption({ label: "112.5%" }).catch(() => s.misses.push("text size preset"));
+      await selects.nth(1).selectOption({ label: "Atkinson Hyperlegible" }).catch(() => s.misses.push("font preset"));
+      await sleep(800);
+      await s.scrollToSection("defaults", "defaults");
+      await s.shoot("admin-accessibility");
+      await s.mustClick('button:visible:text-is("Discard")', "discard the presets", 3000);
+      await sleep(800);
+      await s.tryClick('[role="alertdialog"] button:text-is("Discard"), [role="dialog"] button:text-is("Discard")', 2000);
+      await sleep(800);
+    }],
     adminShot("admin-audit-log", "logs"),
   ]);
 }
@@ -817,6 +836,22 @@ async function smallbiz(browser, theme) {
   return s;
 }
 
+// ── The demo's own login page, before "Launch Demo" ──────────────────────
+async function demologin(browser, theme) {
+  if (!want("demo-login")) return null;
+  const ctx = await newContext(browser, { theme });
+  const s = new Session(await ctx.newPage(), theme);
+  console.log(`[${theme}] demo login`);
+  await s.page.clock.setFixedTime(new Date());
+  await s.page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+  if (await s.page.locator('button:has-text("Launch Demo")').first().waitFor({ state: "visible", timeout: 120000 }).then(() => true).catch(() => false)) {
+    await sleep(2500);
+    await s.shoot("demo-login", { allowLogin: true });
+  } else s.misses.push("Launch Demo button");
+  await ctx.close();
+  return s;
+}
+
 // ── Login pages: a server with demo mode off ─────────────────────────────
 async function login(browser, theme) {
   const api = await adminApi();
@@ -904,7 +939,7 @@ async function lite(browser, theme) {
   return s;
 }
 
-const FLOWS = { desktop, columns, phone, pwa, homelab, admin, org, orgadmin, smallbiz, login, setup, lite };
+const FLOWS = { desktop, columns, phone, pwa, homelab, admin, demologin, org, orgadmin, smallbiz, login, setup, lite };
 const PER_RUN = new Set(["pwa"]);
 
 (async () => {

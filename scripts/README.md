@@ -28,7 +28,7 @@ used. `scenarios.mjs` says what each instance is:
 
 | Instance | Port | What it is | Flows |
 | --- | --- | --- | --- |
-| `demo` | 3122 | demo mode as a home user has it: a second push relay, three plugins and the Bolt theme from the directory, the update check answered "up to date" by a local mock | `desktop`, `columns`, `phone`, `pwa`, `homelab`, `admin` |
+| `demo` | 3122 | demo mode as a home user has it: a second push relay, three plugins and the Bolt theme from the directory, the update check answered "up to date" by a local mock | `desktop`, `columns`, `phone`, `pwa`, `homelab`, `admin`, `demologin` |
 | `org` | 3123 | demo mode at Meridian Labs: the organisation policy (locks, signature, disclaimer, templates, external mail, scopes), OpenID Connect settings, branding for `mail.meridianlabs.localhost`, S/MIME from the directory, team inbox and e-invoice uploaded, no third-party traffic | `org`, `orgadmin`, `smallbiz` |
 | `nondemo` | 3124 | demo mode off, against a local mock OpenID provider | `login` |
 | `setup` | 3125 | empty admin dirs, so the setup wizard runs | `setup` |
@@ -119,8 +119,9 @@ follow the former.
 | `pwa` | demo | `pwa/screenshot-1280x720.png`, `pwa/screenshot-540x720.png` for the web app manifest |
 | `homelab` | demo | `contacts-import`, `settings-notifications`, `filters-sieve`, `account-switcher`, `themes` |
 | `admin` | demo | `admin-overview`, `admin-plugins`, `admin-marketplace`, `admin-telemetry`, `admin-updates` |
+| `demologin` | demo | `demo-login` (the login page with "Launch Demo") |
 | `org` | org | `external-mail`, `composer-org-signature`, `templates-org`, `smime-signed`, `recover-deleted`, `settings-locked`, `delegates`, `shared-tags`, `settings-accessibility` |
-| `orgadmin` | org | `admin-policy`, `admin-domains`, `admin-domains-effective`, `admin-auth`, `admin-signatures`, `admin-org-templates`, `admin-security`, `admin-third-party`, `admin-shared-tags`, `admin-branding`, `admin-audit-log` |
+| `orgadmin` | org | `admin-policy`, `admin-domains`, `admin-domains-effective`, `admin-auth`, `admin-signatures`, `admin-org-templates`, `admin-security`, `admin-third-party`, `admin-shared-tags`, `admin-branding`, `admin-accessibility`, `admin-audit-log` |
 | `smallbiz` | org | `shared-mailbox`, `shared-mailbox-reply`, `vacation`, `calendar-shared`, `calendar-availability`, `team-inbox`, `e-invoice` |
 | `login` | nondemo | `login-sso`, `login`, `login-branded`, `login-servers` |
 | `setup` | setup | `setup-welcome`, `setup-server`, `setup-auth`, `setup-branding`, `setup-review` |
