@@ -58,6 +58,7 @@ const F = {
   signed: { query: "security review", row: "Beacon security review: signed off" },
   coffee: { query: "Coffee before", row: "Coffee before the go/no-go?" },
   eInvoice: { query: "SH-2026-10418", row: "Your invoice SH-2026-10418" },
+  flight: { query: "K4TQ9M", row: "Booking confirmed K4TQ9M" },
 };
 
 // ── Mail, calendar, contacts, files, settings, Pro: one signed-in session ──
@@ -836,6 +837,31 @@ async function smallbiz(browser, theme) {
   return s;
 }
 
+// ── Booking cards: a flight confirmation with schema.org markup ──────────
+// Tagus Air's mail (lib/demo/fixtures/travel.ts) carries a FlightReservation
+// and a verified sender, so the card shows above the message. Opened from
+// the inbox, where it is yesterday's mail; search only if the row is out of
+// view.
+async function bookingCards(browser, theme) {
+  if (!want("booking-cards")) return null;
+  const ctx = await newContext(browser, { theme });
+  const s = new Session(await ctx.newPage(), theme);
+  console.log(`[${theme}] booking cards`);
+  await s.signIn();
+  const opened = (await s.tryClick(`text=${F.flight.row}`, 4000)) || (await s.open(F.flight.query, F.flight.row, "flight booking with markup"));
+  if (opened) {
+    // The flight card waits for the airport time-zone table.
+    const card = s.page.locator('[data-testid="structured-mail-card"][data-kind="flight"]').first();
+    if (await card.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false)) {
+      await sleep(2000);
+      await s.scrollListTop();
+      await s.shoot("booking-cards");
+    } else s.misses.push("flight card above the booking mail");
+  }
+  await ctx.close();
+  return s;
+}
+
 // ── The demo's own login page, before "Launch Demo" ──────────────────────
 async function demologin(browser, theme) {
   if (!want("demo-login")) return null;
@@ -939,7 +965,7 @@ async function lite(browser, theme) {
   return s;
 }
 
-const FLOWS = { desktop, columns, phone, pwa, homelab, admin, demologin, org, orgadmin, smallbiz, login, setup, lite };
+const FLOWS = { desktop, columns, phone, pwa, homelab, admin, "booking-cards": bookingCards, demologin, org, orgadmin, smallbiz, login, setup, lite };
 const PER_RUN = new Set(["pwa"]);
 
 (async () => {
