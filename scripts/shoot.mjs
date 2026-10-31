@@ -114,10 +114,13 @@ async function desktop(browser, theme) {
     await s.search("Beacon");
     if (want("search")) await s.shoot("search");
     // The funnel next to the search field is titled "More".
-    if (want("search-filters") && await s.mustClick('button[title="More"], button[aria-label*="filter" i], button[title*="filter" i]', "advanced search toggle", 3000)) {
+    const filterToggle = 'button[title="More"], button[aria-label*="filter" i], button[title*="filter" i]';
+    if (want("search-filters") && await s.mustClick(filterToggle, "advanced search toggle", 3000)) {
       await sleep(1500);
       await s.shoot("search-filters");
-      await s.page.keyboard.press("Escape");
+      // The panel stays open across views until its toggle closes it.
+      await s.mustClick(filterToggle, "close the advanced search", 3000);
+      await sleep(800);
     }
     await s.clearSearch();
   }
@@ -211,6 +214,9 @@ async function desktop(browser, theme) {
   await s.ownInbox();
 
   if (want("shortcuts")) {
+    // A message behind the overlay rather than the demo's welcome panel.
+    await s.mustClick(`text=${F.invoice.row}`, "message behind the shortcuts");
+    await sleep(2000);
     await s.page.keyboard.press("Shift+?");
     await sleep(1500);
     if (await s.page.locator('text=/Keyboard shortcuts/i').first().isVisible().catch(() => false)) await s.shoot("shortcuts");
@@ -649,7 +655,10 @@ async function org(browser, theme) {
     await s.open(F.coffee.query, F.coffee.row, "another message");
     if (await s.open(F.signed.query, F.signed.row, "signed message again")) {
       await sleep(3000);
-      if (!(await s.page.locator("text=/Valid signature/").first().isVisible().catch(() => false))) s.misses.push("S/MIME valid signature banner");
+      // The banner is the plugin's own frame.
+      let valid = false;
+      for (const f of s.page.frames()) if (await f.locator("text=/Valid signature/").count().catch(() => 0)) valid = true;
+      if (!valid) s.misses.push("S/MIME valid signature banner");
       await s.shoot("smime-signed");
     }
     await s.clearSearch();
@@ -753,11 +762,11 @@ async function smallbiz(browser, theme) {
           await s.page.keyboard.press("Enter");
           await sleep(1200);
         }
-        // Close the suggestions, move the event to an afternoon slot, show the list.
-        await s.page.locator("text=Participants").first().click().catch(() => {});
+        // Move the event to an afternoon slot, then click the panel's heading
+        // so no field keeps focus and the address suggestions close.
         const times = s.page.locator('input[type="time"]');
         if ((await times.count()) >= 2) { await times.nth(0).fill("15:00"); await times.nth(1).fill("16:00"); }
-        await s.page.locator("text=Participants").first().click().catch(() => {});
+        await s.page.locator("text=Create event").first().click().catch(() => {});
         await sleep(2500);
         await s.page.locator("text=Participants").first().evaluate((el) => el.scrollIntoView({ block: "start" })).catch(() => {});
         await sleep(1000);
@@ -776,8 +785,8 @@ async function smallbiz(browser, theme) {
     const p = new Session(await pctx.newPage(), theme);
     if (!(await withAdmin(pctx))) p.misses.push("admin session (SHOOT_ADMIN_COOKIE_FILE)");
     await p.signIn();
+    // One at a time, so the team inbox capture shows no e-invoice filter.
     if (want("team-inbox")) await p.enablePlugin("Team inbox");
-    if (want("e-invoice")) await p.enablePlugin("E-Invoices");
     if (want("team-inbox") && await p.openSupportInbox()) {
       await sleep(3000);
       await p.mustClick(`text=${F.support}`, "support request");
@@ -785,6 +794,7 @@ async function smallbiz(browser, theme) {
       await p.shoot("team-inbox");
     }
     if (want("e-invoice")) {
+      await p.enablePlugin("E-Invoices");
       await p.ownInbox();
       if (await p.open(F.eInvoice.query, F.eInvoice.row, "e-invoice mail")) {
         await sleep(4000);
