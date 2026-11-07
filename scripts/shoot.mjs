@@ -298,7 +298,7 @@ async function desktop(browser, theme) {
     if (want("settings")) await s.shoot("settings");
     if (want("settings-appearance") && await s.settingsPage("Appearance")) await s.shoot("settings-appearance");
     if (want("identities") && await s.settingsPage("Account")) {
-      if (await s.mustClick('main button:has-text("Manage identities")', "manage identities")) {
+      if (await s.mustClick('main button:has-text("Edit addresses"), main button:has-text("Manage identities")', "edit addresses")) {
         await sleep(2500);
         await s.scrollToTop();
         await s.shoot("identities");
@@ -464,12 +464,21 @@ async function homelab(browser, theme) {
       await s.showAdvanced();
       // Pick the relay the admin added: the list offers the public one and theirs.
       const relay = s.page.locator('main select:has(option:text-is("Home relay"))').first();
-      if (await relay.count()) { await relay.selectOption({ label: "Home relay" }); await sleep(1000); } else s.misses.push("push relay choice");
-      await s.scrollToSection("push", "push notifications");
-      await s.shoot("settings-notifications");
+      // Since webmail 09d6bff12 demo mode turns push off and disables the
+      // picker, so this shot can't be taken from a demo instance.
+      if (!(await relay.count())) s.misses.push("push relay choice");
+      else if (!(await relay.isEnabled())) s.misses.push("push relay choice (push is off in demo mode)");
+      else {
+        await relay.selectOption({ label: "Home relay" });
+        await sleep(1000);
+        await s.scrollToSection("push", "push notifications");
+        await s.shoot("settings-notifications");
+      }
     }
     if (want("filters-sieve") && await s.settingsPage("Filters")) {
-      if (await s.mustClick('button:has-text("Open raw Sieve editor"), button:has-text("Raw Sieve editor")', "raw Sieve editor")) {
+      // The raw editor button shows only with advanced settings on.
+      await s.showAdvanced();
+      if (await s.mustClick('button:has-text("Edit rules as code"), button:has-text("Open raw Sieve editor"), button:has-text("Raw Sieve editor")', "raw Sieve editor")) {
         await sleep(1500);
         const editor = s.page.locator('[role="dialog"] textarea, [role="dialog"] .cm-content').first();
         if (await editor.count()) {
@@ -627,7 +636,8 @@ async function org(browser, theme) {
 
   // The External label on mail from outside, and the question before a reply leaves.
   if (want("external-mail")) {
-    await s.mustClick(`text=${F.invoice.row}`, "external invoice");
+    // Search first: with the locked comfortable density the invoice is below the rendered rows.
+    await s.open(F.invoice.query, F.invoice.row, "external invoice");
     await sleep(3000);
     if (!(await s.page.locator("text=/^External$/").first().isVisible().catch(() => false))) s.misses.push("External label");
     await s.mustClick('button:has-text("Reply")', "reply to the invoice");
