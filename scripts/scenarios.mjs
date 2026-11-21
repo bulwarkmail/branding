@@ -22,7 +22,7 @@ export const ASSETS = path.join(here, "assets");
 export const PLUGINS_DIR = process.env.SHOOT_PLUGINS || "";
 const pluginZip = (name) => (PLUGINS_DIR ? path.join(PLUGINS_DIR, name, `${name}.zip`) : "");
 
-export const PORTS = { demo: 3122, org: 3123, nondemo: 3124, setup: 3125, oidc: 3127, version: 3128, lite: 3129 };
+export const PORTS = { demo: 3122, org: 3123, nondemo: 3124, setup: 3125, team: 3126, oidc: 3127, version: 3128, lite: 3129 };
 
 export const WORK_HOST = "mail.meridianlabs.example";
 
@@ -89,6 +89,20 @@ const ORG_POLICY = {
     { id: "meridian-staff", label: "Meridian Labs staff", match: { domains: ["meridianlabs.example"] }, policy: { features: {}, restrictions: { singleKeyShortcuts: { locked: true, value: true } }, defaults: {}, organisation: {} } },
     { id: "support-team", label: "Support team", match: { groups: ["support@meridianlabs.example"] }, policy: { features: {}, restrictions: {}, defaults: {}, organisation: { session: { idleMinutes: 15 } } } },
   ],
+};
+
+/**
+ * Meridian Labs with team mailboxes on for the Support group alone
+ * (organisation.teamMailboxes, Bulwark 1.22). No plugins: the team inbox
+ * plugin steps back once the switch is on.
+ */
+const TEAM_POLICY = {
+  ...ORG_POLICY,
+  forceEnabledPlugins: [],
+  scopes: ORG_POLICY.scopes.map((scope) => scope.id !== "support-team" ? scope : {
+    ...scope,
+    policy: { ...scope.policy, organisation: { ...scope.policy.organisation, teamMailboxes: { enabled: true } } },
+  }),
 };
 
 const BRANDED = {
@@ -176,6 +190,20 @@ export const SCENARIOS = {
       await api.patchConfig({ noThirdPartyTraffic: true });
     },
     flows: ["org", "orgadmin", "smallbiz"],
+  },
+
+  // Team mailboxes on for Support. An instance of its own: on the org
+  // instance the switch would take the team inbox plugin's captures away.
+  team: {
+    port: PORTS.team,
+    demo: true,
+    config: { setupComplete: true, demoMode: true },
+    env: { JMAP_SERVER_URL: `https://${WORK_HOST}` },
+    async setup(api) {
+      await api.patchConfig({ loginCompanyName: "Meridian Labs" });
+      await api.putPolicy({ ...(await api.get("/api/admin/policy")), ...TEAM_POLICY });
+    },
+    flows: ["team"],
   },
 
   // A real login page (demo mode off), against a mock OpenID provider.

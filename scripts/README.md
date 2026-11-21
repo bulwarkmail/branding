@@ -30,6 +30,7 @@ used. `scenarios.mjs` says what each instance is:
 | --- | --- | --- | --- |
 | `demo` | 3122 | demo mode as a home user has it: a second push relay, three plugins and the Bolt theme from the directory, the update check answered "up to date" by a local mock | `desktop`, `columns`, `phone`, `pwa`, `homelab`, `admin`, `booking-cards`, `demologin` |
 | `org` | 3123 | demo mode at Meridian Labs: the organisation policy (locks, signature, disclaimer, templates, external mail, scopes), OpenID Connect settings, branding for `mail.meridianlabs.localhost`, S/MIME from the directory, team inbox and e-invoice uploaded, no third-party traffic | `org`, `orgadmin`, `smallbiz` |
+| `team` | 3126 | demo mode at Meridian Labs with team mailboxes on for the Support group alone; no plugins, since the team inbox plugin steps back once the switch is on | `team` |
 | `nondemo` | 3124 | demo mode off, against a local mock OpenID provider | `login` |
 | `setup` | 3125 | empty admin dirs, so the setup wizard runs | `setup` |
 | `lite` | 3129 | a Lite export with demo mode on, served under `/webmail` | `lite` |
@@ -124,6 +125,7 @@ follow the former.
 | `org` | org | `external-mail`, `composer-org-signature`, `templates-org`, `smime-signed`, `recover-deleted`, `settings-locked`, `delegates`, `shared-tags`, `settings-accessibility` |
 | `orgadmin` | org | `admin-policy`, `admin-domains`, `admin-domains-effective`, `admin-auth`, `admin-signatures`, `admin-org-templates`, `admin-security`, `admin-third-party`, `admin-shared-tags`, `admin-branding`, `admin-accessibility`, `admin-audit-log` |
 | `smallbiz` | org | `shared-mailbox`, `shared-mailbox-reply`, `vacation`, `calendar-shared`, `calendar-availability`, `team-inbox`, `e-invoice` |
+| `team` | team | `team-mailbox-notes`, `team-mailbox-mention`, `team-mailbox-assign`, `admin-team-mailboxes` (needs the webmail's demo team notes, after 1.21.3) |
 | `login` | nondemo | `login-sso`, `login`, `login-branded`, `login-servers` |
 | `setup` | setup | `setup-welcome`, `setup-server`, `setup-auth`, `setup-branding`, `setup-review` |
 | `lite` | lite | `lite-inbox` |

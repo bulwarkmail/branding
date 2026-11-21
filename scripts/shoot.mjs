@@ -837,6 +837,68 @@ async function smallbiz(browser, theme) {
   return s;
 }
 
+// ── Team mailboxes: notes, mentions and assignment in Support ────────────
+// The team instance turns team mailboxes on for the Support group. Its notes
+// (lib/demo/fixtures/team-notes.ts) are Bob's and Alice's on Tomás's
+// question, with Bob mentioning Nora, and Bob's on the departed employee's
+// login. The policy's group scope needs the admin session in the browser.
+async function team(browser, theme) {
+  const ctx = await newContext(browser, { theme });
+  const s = new Session(await ctx.newPage(), theme);
+  console.log(`[${theme}] team mailboxes`);
+  if (!(await withAdmin(ctx))) s.misses.push("admin session (SHOOT_ADMIN_COOKIE_FILE)");
+  await s.signIn();
+  if (want("team-mailbox-notes", "team-mailbox-mention", "team-mailbox-assign") && await s.openSupportInbox()) {
+    await sleep(2500);
+    await s.mustClick(`text=${F.support}`, "support request");
+    await s.page.locator("[data-team-note-button]").first().waitFor({ state: "visible", timeout: 20000 }).catch(() => s.misses.push("team note button"));
+    await sleep(2500);
+    // The notes under the message, with its last lines above them.
+    await s.page.locator("text=Only your team sees this").first().evaluate((el) => {
+      el.scrollIntoView({ block: "start" });
+      let p = el.parentElement;
+      while (p && !(p.scrollHeight > p.clientHeight && /auto|scroll/.test(getComputedStyle(p).overflowY))) p = p.parentElement;
+      p?.scrollBy(0, -110);
+    }).catch(() => s.misses.push("team notes heading"));
+    await sleep(1200);
+    if (want("team-mailbox-notes")) await s.shoot("team-mailbox-notes");
+    if (want("team-mailbox-mention")) {
+      if (await s.mustClick("[data-team-note-button]", "Note button")) {
+        await sleep(800);
+        await s.page.keyboard.type("Raised to 100 and sent Tomás the new PO. @Al", { delay: 12 });
+        await sleep(1500);
+        await s.shoot("team-mailbox-mention");
+        // Leave nothing behind: clear the field, then close it.
+        await s.page.keyboard.press("Control+A");
+        await s.page.keyboard.press("Backspace");
+        await s.page.keyboard.press("Escape");
+        await sleep(800);
+      }
+    }
+    if (want("team-mailbox-assign")) {
+      // Lena's address change is nobody's yet: the team's actions in its row's menu.
+      const row = s.page.locator('[data-tour="email-list"] >> text=Invoice address change').first();
+      await row.click({ button: "right" }).catch(() => s.misses.push("Invoice address change row"));
+      await sleep(1200);
+      await s.shoot("team-mailbox-assign", { moveMouse: false });
+      await s.page.keyboard.press("Escape");
+      await sleep(800);
+    }
+  }
+  await ctx.close();
+
+  // The switch in the admin console, on for the Support team's scope.
+  const a = await adminConsole(browser, theme, [
+    ["admin-team-mailboxes", async (s) => {
+      if (!(await s.adminPage("org-team-mailboxes"))) return;
+      await s.mustClick('main button:has-text("Support team")', "Support team scope", 5000);
+      await sleep(1500);
+      await s.shoot("admin-team-mailboxes");
+    }],
+  ]);
+  return [s, a];
+}
+
 // ── Booking cards: a flight confirmation with schema.org markup ──────────
 // Tagus Air's mail (lib/demo/fixtures/travel.ts) carries a FlightReservation
 // and a verified sender, so the card shows above the message. Opened from
@@ -965,7 +1027,7 @@ async function lite(browser, theme) {
   return s;
 }
 
-const FLOWS = { desktop, columns, phone, pwa, homelab, admin, "booking-cards": bookingCards, demologin, org, orgadmin, smallbiz, login, setup, lite };
+const FLOWS = { desktop, columns, phone, pwa, homelab, admin, "booking-cards": bookingCards, demologin, org, orgadmin, smallbiz, team, login, setup, lite };
 const PER_RUN = new Set(["pwa"]);
 
 (async () => {
