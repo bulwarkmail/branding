@@ -851,38 +851,50 @@ async function team(browser, theme) {
   if (want("team-mailbox-notes", "team-mailbox-mention", "team-mailbox-assign") && await s.openSupportInbox()) {
     await sleep(2500);
     await s.mustClick(`text=${F.support}`, "support request");
-    await s.page.locator("[data-team-note-button]").first().waitFor({ state: "visible", timeout: 20000 }).catch(() => s.misses.push("team note button"));
+    const line = s.page.locator("[data-team-note-field] textarea").first();
+    await line.waitFor({ state: "visible", timeout: 20000 }).catch(() => s.misses.push("team note line"));
     await sleep(2500);
-    // The notes under the message, with its last lines above them.
+    // The notes under the message, with the message's text above them (the
+    // line under the subject is in the assign shot).
+    // Only the message's own scroll area moves: scrollIntoView would also
+    // shift the reader's clipped outer box and cut the subject off.
     await s.page.locator("text=Only your team sees this").first().evaluate((el) => {
-      el.scrollIntoView({ block: "start" });
       let p = el.parentElement;
       while (p && !(p.scrollHeight > p.clientHeight && /auto|scroll/.test(getComputedStyle(p).overflowY))) p = p.parentElement;
-      p?.scrollBy(0, -110);
+      if (p) p.scrollTop += el.getBoundingClientRect().top - p.getBoundingClientRect().top - 40;
     }).catch(() => s.misses.push("team notes heading"));
     await sleep(1200);
     if (want("team-mailbox-notes")) await s.shoot("team-mailbox-notes");
     if (want("team-mailbox-mention")) {
-      if (await s.mustClick("[data-team-note-button]", "Note button")) {
+      await line.click().catch(() => s.misses.push("note line"));
+      await sleep(800);
+      await s.page.keyboard.type("Raised to 100 and sent Tom\u00e1s the new PO. @Al", { delay: 12 });
+      await sleep(1500);
+      await s.shoot("team-mailbox-mention");
+      // Leave nothing behind: empty the line, then leave it.
+      await s.page.keyboard.press("Control+A");
+      await s.page.keyboard.press("Backspace");
+      await s.page.keyboard.press("Escape");
+      await s.page.keyboard.press("Escape");
+      await sleep(800);
+    }
+    if (want("team-mailbox-assign")) {
+      // Lena's address change is nobody's yet: Assign to… from the line under
+      // its subject, with two people ticked.
+      await s.mustClick('[data-tour="email-list"] >> text=Invoice address change', "Invoice address change row");
+      await sleep(2000);
+      if (await s.mustClick('[data-testid="team-line-assign"]', "Assign in the line under the subject")) {
+        await sleep(1000);
+        const dialog = s.page.getByTestId("team-assign-dialog");
+        for (const name of ["Bob", "Nora"]) {
+          await dialog.getByRole("option").filter({ hasText: name }).first().click().catch(() => s.misses.push(`${name} in Assign to`));
+          await sleep(300);
+        }
         await sleep(800);
-        await s.page.keyboard.type("Raised to 100 and sent Tomás the new PO. @Al", { delay: 12 });
-        await sleep(1500);
-        await s.shoot("team-mailbox-mention");
-        // Leave nothing behind: clear the field, then close it.
-        await s.page.keyboard.press("Control+A");
-        await s.page.keyboard.press("Backspace");
+        await s.shoot("team-mailbox-assign", { moveMouse: false });
         await s.page.keyboard.press("Escape");
         await sleep(800);
       }
-    }
-    if (want("team-mailbox-assign")) {
-      // Lena's address change is nobody's yet: the team's actions in its row's menu.
-      const row = s.page.locator('[data-tour="email-list"] >> text=Invoice address change').first();
-      await row.click({ button: "right" }).catch(() => s.misses.push("Invoice address change row"));
-      await sleep(1200);
-      await s.shoot("team-mailbox-assign", { moveMouse: false });
-      await s.page.keyboard.press("Escape");
-      await sleep(800);
     }
   }
   await ctx.close();
